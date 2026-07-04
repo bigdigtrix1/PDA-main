@@ -60,7 +60,6 @@ async function initCylinderBackdrop() {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.domElement.style.cursor = 'default';
   container.appendChild(renderer.domElement);
 
   function renderNow() {
@@ -145,24 +144,6 @@ async function initCylinderBackdrop() {
     cylinderGroup.add(ring);
   });
 
-  // -- click-to-navigate hit bands: invisible until hovered --
-  const bandHeight = CYL_HEIGHT / 3;
-  const bandDefs = [
-    { section: 'about', yCenter: CYL_HEIGHT / 2 - bandHeight / 2 },
-    { section: 'projects', yCenter: 0 },
-    { section: 'contact', yCenter: -CYL_HEIGHT / 2 + bandHeight / 2 },
-  ];
-  const hitBands = [];
-  bandDefs.forEach((def) => {
-    const geo = new THREE.CylinderGeometry(CYL_RADIUS * 1.15, CYL_RADIUS * 1.15, bandHeight * 0.94, radialSegments, 1, true);
-    const mat = new THREE.MeshBasicMaterial({ color: 0x7cc4ff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.y = def.yCenter;
-    mesh.userData.section = def.section;
-    cylinderGroup.add(mesh);
-    hitBands.push(mesh);
-  });
-
   scene.add(cylinderGroup);
 
   // -- ambient dust, independent of the cylinder's own rotation --
@@ -212,59 +193,10 @@ async function initCylinderBackdrop() {
   }
   window.addEventListener('resize', onResize);
 
-  // -- click-to-navigate: raycast against the invisible bands --
-  const raycaster = new THREE.Raycaster();
-  const pointerNDC = new THREE.Vector2();
-  let hoveredBand = null;
-
-  function updatePointerNDC(clientX, clientY) {
-    const rect = renderer.domElement.getBoundingClientRect();
-    pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-    pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-  }
-
-  function getIntersectedBand() {
-    raycaster.setFromCamera(pointerNDC, camera);
-    const hits = raycaster.intersectObjects(hitBands);
-    return hits.length ? hits[0].object : null;
-  }
-
-  renderer.domElement.addEventListener('pointermove', (e) => {
-    updatePointerNDC(e.clientX, e.clientY);
-    const band = getIntersectedBand();
-    if (band !== hoveredBand) {
-      if (hoveredBand) hoveredBand.material.opacity = 0;
-      hoveredBand = band;
-      if (hoveredBand) {
-        hoveredBand.material.opacity = 0.12;
-        renderer.domElement.style.cursor = 'pointer';
-      } else {
-        renderer.domElement.style.cursor = 'default';
-      }
-      if (prefersReducedMotion) renderNow();
-    }
-  });
-
-  renderer.domElement.addEventListener('pointerleave', () => {
-    if (hoveredBand) hoveredBand.material.opacity = 0;
-    hoveredBand = null;
-    renderer.domElement.style.cursor = 'default';
-    if (prefersReducedMotion) renderNow();
-  });
-
-  renderer.domElement.addEventListener('click', (e) => {
-    updatePointerNDC(e.clientX, e.clientY);
-    const band = getIntersectedBand();
-    if (band) {
-      const target = document.getElementById(band.userData.section);
-      if (target) target.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
-    }
-  });
-
   if (prefersReducedMotion) {
     cylinderGroup.rotation.y = 0.6;
     renderNow();
-    console.log('[PDA] Reduced motion is on — cylinder is static, but still clickable.');
+    console.log('[PDA] Reduced motion is on — cylinder is static.');
     return;
   }
 
@@ -308,7 +240,10 @@ async function initCylinderBackdrop() {
 function initPlateReveal() {
   const plates = document.querySelectorAll('.plate');
   if (!('IntersectionObserver' in window)) {
-    plates.forEach((p) => p.classList.add('in-view'));
+    plates.forEach((p) => {
+      p.classList.add('in-view');
+      p.classList.add('in-front');
+    });
     return;
   }
   const observer = new IntersectionObserver(
@@ -316,6 +251,10 @@ function initPlateReveal() {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           entry.target.classList.add('in-view');
+          // Wait until the plate is already visible and partway through its
+          // move before switching it in front of the cylinder — otherwise
+          // the "behind" moment happens while it's still invisible.
+          setTimeout(() => entry.target.classList.add('in-front'), 420);
           observer.unobserve(entry.target);
         }
       });
