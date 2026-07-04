@@ -1,8 +1,9 @@
 # PDA — site
 
-A single-page site for PDA: fixed nav, a full-3D WebGL steel cylinder backdrop
-that rotates as you scroll, and content plates for About Me, Current Projects
-(Vuil, Sens, Orbiteer), and Contact.
+A single-page, dark-themed site for PDA: fixed nav, a detailed WebGL steel
+cylinder that stays on screen for the entire scroll and doubles as
+navigation (click its top/middle/bottom third to jump to About, Projects,
+or Contact), with content plates that emerge from behind it as you scroll.
 
 Plain HTML/CSS/JS — no build step, no framework, no bundler.
 
@@ -38,30 +39,46 @@ No build step is needed — GitHub Pages serves the files as-is.
 - Optional: `assets/favicon.svg` is a simple placeholder mark — swap for a
   real logo if you have one.
 
+## The cylinder as navigation
+
+Move your mouse over the cylinder and it's split into three invisible
+bands (top, middle, bottom) that light up faintly on hover and, on click,
+scroll you to About / Projects / Contact respectively — same destinations
+as the nav bar, just a second, more tactile way to get there. This is a
+mouse/touch bonus on top of the real nav, not a replacement for it — it's
+marked `aria-hidden` so screen readers correctly ignore it and rely on the
+fully-accessible nav bar instead.
+
 ## If the cylinder doesn't show up
 
-Most likely cause: your OS has "reduce motion" turned on (Settings →
-Accessibility on Windows/macOS/most phones). The site now still renders a
-static cylinder in that case instead of hiding it — if you were seeing a
-plain page before, this update should fix it.
-
-If it's still not showing, open your browser's DevTools (F12) → Console tab
-and reload. Every failure path now logs a `[PDA]`-prefixed message there,
-which will say exactly what happened (three.js failed to load, WebGL isn't
-supported, etc.) — send me that message and I can pin it down.
+Open your browser's DevTools (F12) → Console tab and reload. Every failure
+path logs a `[PDA]`-prefixed message there — three.js failing to load,
+WebGL not being supported, etc. — send me that message and I can pin it
+down. If you have "reduce motion" on at the OS level, the cylinder will
+still appear and still be clickable, it just won't spin — that's intentional.
 
 ## Notes on how it's built
 
 - The cylinder is rendered with Three.js (loaded via CDN through an import
   map in `index.html`, pinned to `three@0.185.1` — no install needed).
+- It's built from a dark hull, ~18 thin glowing rings plus brighter rings
+  marking the About/Projects and Projects/Contact boundaries, bright cap
+  rings top and bottom, 8 vertical light strips, a glowing base platform,
+  and a couple hundred drifting ambient particles.
 - Rotation = a slow constant ambient spin + an offset driven by scroll
   position, so it's always gently alive and also responds to scrolling.
-- If a visitor has WebGL disabled or "reduce motion" turned on at the OS
-  level, the 3D layer is skipped entirely and a static gradient is shown
-  instead — no broken canvas, no motion forced on people who've asked for less.
-- Content plates (About, Vuil, Sens, Orbiteer, Contact) fade/tilt into place
-  via `IntersectionObserver` as they scroll into view, echoing the cylinder's
-  3D language without needing the text itself to live inside the 3D scene —
-  keeps it crisp, accessible, and indexable.
-- Colors, fonts, and spacing are all CSS custom properties at the top of
-  `css/style.css` under `:root` if you want to tune the palette.
+  It stays visible for the whole page, not just the hero.
+- Click-to-navigate uses `THREE.Raycaster` against three invisible cylinder
+  bands — no extra libraries.
+- If a visitor has WebGL disabled, the 3D layer is skipped and a static
+  dark gradient is shown instead.
+- Content plates (About, Vuil, Sens, Orbiteer, Contact) start small, dim,
+  and behind the cylinder (lower `z-index`), then scale up, brighten, and
+  pass in front of it via `IntersectionObserver` as they scroll into view —
+  the project cards specifically slide in from the middle (where the
+  cylinder is) out to their grid position. Text itself stays regular DOM,
+  not embedded in the 3D scene, so it's crisp, accessible, and indexable.
+- Colors, fonts, spacing, and the z-index scale are all CSS custom
+  properties at the top of `css/style.css` under `:root` if you want to
+  tune anything.
+

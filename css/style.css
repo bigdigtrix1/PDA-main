@@ -1,25 +1,24 @@
 /* ==========================================================================
-   PDA — design tokens
+   PDA — design tokens (dark)
    ========================================================================== */
 
 :root {
   /* steel family */
-  --bg: #F1F3F5;
-  --bg-deep: #E3E7EA;
-  --panel: #E7EAED;
-  --panel-border: #CBD1D7;
-  --steel: #8B94A0;
-  --steel-dark: #454C56;
+  --bg: #0B0D11;
+  --panel: #161A20;
+  --panel-border: #2A313A;
+  --steel: #6B7480;
+  --steel-light: #AEB6BF;
 
-  /* ink family */
-  --ink: #1A1E24;
-  --ink-soft: #5C6570;
-  --ink-faint: #8990A0;
+  /* ink family (light-on-dark) */
+  --ink: #EDF0F2;
+  --ink-soft: #9BA3AD;
+  --ink-faint: #5C6570;
 
   /* blue accent family */
-  --blue: #1E88F5;
-  --blue-bright: #4FADFF;
-  --blue-deep: #0F5FC4;
+  --blue: #3D9EFF;
+  --blue-bright: #7CC4FF;
+  --blue-deep: #1D6FCC;
 
   /* type */
   --font-display: 'Space Grotesk', 'Inter', sans-serif;
@@ -30,6 +29,13 @@
   --nav-height: 72px;
   --content-max: 1080px;
   --radius: 14px;
+
+  /* stacking scale — the canvas sits in the middle, plates flip across it */
+  --z-plate-hidden: 1;
+  --z-canvas: 5;
+  --z-plate-shown: 8;
+  --z-persistent: 10;
+  --z-chrome: 100;
 }
 
 /* ==========================================================================
@@ -70,10 +76,11 @@ button:focus-visible {
   position: absolute;
   left: -9999px;
   top: 0;
-  background: var(--ink);
-  color: #fff;
+  background: var(--blue);
+  color: var(--bg);
+  font-weight: 600;
   padding: 12px 18px;
-  z-index: 1000;
+  z-index: var(--z-chrome);
   border-radius: 0 0 8px 0;
 }
 .skip-link:focus {
@@ -81,17 +88,15 @@ button:focus-visible {
 }
 
 /* ==========================================================================
-   Animated backdrop
+   Animated backdrop — persistent for the whole page, not just the hero
    ========================================================================== */
 
 #bg-canvas-container {
   position: fixed;
   inset: 0;
-  z-index: 0;
-  pointer-events: none;
+  z-index: var(--z-canvas);
   background:
-    radial-gradient(ellipse 1000px 760px at 50% 5%, #C3CBD3 0%, #DCE2E7 45%, var(--bg) 78%);
-  transition: opacity 0.4s ease;
+    radial-gradient(ellipse 1100px 900px at 50% 35%, #1a222c 0%, #10151b 48%, var(--bg) 80%);
 }
 
 #bg-canvas-container canvas {
@@ -112,13 +117,13 @@ body.no-webgl #bg-canvas-container canvas {
 .site-nav {
   position: fixed;
   top: 0; left: 0; right: 0;
-  z-index: 100;
+  z-index: var(--z-chrome);
   height: var(--nav-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 clamp(20px, 5vw, 56px);
-  background: rgba(241, 243, 245, 0.72);
+  background: rgba(11, 13, 17, 0.72);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   border-bottom: 1px solid var(--panel-border);
@@ -189,12 +194,14 @@ body.no-webgl #bg-canvas-container canvas {
    Layout
    ========================================================================== */
 
-main { position: relative; z-index: 1; }
+main { position: static; }
 
 .section {
-  padding: 120px clamp(20px, 5vw, 56px);
-  perspective: 1200px;
+  padding: 140px clamp(20px, 5vw, 56px);
+  scroll-margin-top: var(--nav-height);
 }
+
+#hero { scroll-margin-top: 0; }
 
 .section-inner {
   max-width: var(--content-max);
@@ -206,7 +213,7 @@ main { position: relative; z-index: 1; }
   font-size: 12.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--blue-deep);
+  color: var(--blue-bright);
   margin-bottom: 18px;
 }
 
@@ -220,7 +227,7 @@ main { position: relative; z-index: 1; }
 }
 
 /* ==========================================================================
-   Hero
+   Hero — always above the canvas, no reveal choreography needed here
    ========================================================================== */
 
 .hero {
@@ -232,7 +239,7 @@ main { position: relative; z-index: 1; }
   text-align: center;
   padding: calc(var(--nav-height) + 40px) 24px 40px;
   position: relative;
-  z-index: 1;
+  z-index: var(--z-persistent);
 }
 
 .hero-inner .eyebrow {
@@ -247,10 +254,11 @@ main { position: relative; z-index: 1; }
   letter-spacing: 0.02em;
   line-height: 1;
   margin: 6px 0 20px;
-  background: linear-gradient(160deg, var(--ink) 20%, var(--steel-dark) 55%, var(--blue-deep) 100%);
+  background: linear-gradient(160deg, #ffffff 0%, var(--blue-bright) 55%, var(--blue) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  filter: drop-shadow(0 0 46px rgba(61, 158, 255, 0.45));
 }
 
 .hero-tagline {
@@ -290,25 +298,35 @@ main { position: relative; z-index: 1; }
 }
 
 /* ==========================================================================
-   Plates — the shared "mounted on the cylinder" card language
+   Plates — start dim/small/behind the cylinder, emerge in front as they
+   scroll into view. z-index switches partway through the motion so they
+   read as passing from behind the cylinder rather than just fading in.
    ========================================================================== */
 
 .plate {
+  position: relative;
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
   padding: clamp(24px, 4vw, 40px);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 18px 40px -24px rgba(26,30,36,0.25);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 24px 50px -22px rgba(0,0,0,0.7),
+    0 0 34px -22px rgba(61,158,255,0.4);
   opacity: 0;
-  transform: translateY(36px) rotateX(6deg);
-  transform-origin: bottom center;
-  transition: opacity 0.85s cubic-bezier(0.2,0.7,0.2,1), transform 0.85s cubic-bezier(0.2,0.7,0.2,1);
+  transform: translateY(26px) scale(0.82);
+  z-index: var(--z-plate-hidden);
+  transition:
+    opacity 0.9s cubic-bezier(0.2,0.7,0.2,1),
+    transform 0.9s cubic-bezier(0.2,0.7,0.2,1),
+    z-index 0s linear 0.2s;
   will-change: opacity, transform;
 }
 
 .plate.in-view {
   opacity: 1;
-  transform: translateY(0) rotateX(0deg);
+  transform: translateY(0) scale(1);
+  z-index: var(--z-plate-shown);
 }
 
 .plate-wide { max-width: 720px; }
@@ -355,14 +373,34 @@ main { position: relative; z-index: 1; }
 
 .plate-pending {
   border-style: dashed;
-  background: rgba(231, 234, 237, 0.55);
+  background: rgba(255, 255, 255, 0.02);
 }
 .plate-pending .plate-tag { color: var(--ink-faint); }
 .plate-pending .plate-body { color: var(--ink-faint); }
 
-/* stagger the project plates slightly */
-.plate-grid .project-plate:nth-child(2) { transition-delay: 0.08s; }
-.plate-grid .project-plate:nth-child(3) { transition-delay: 0.16s; }
+/* on wide screens, project plates gather toward the middle (where the
+   cylinder is) before fanning out to their grid slots */
+@media (min-width: 761px) {
+  .plate-grid .project-plate:nth-child(1) { transform: translateX(58%) translateY(20px) scale(0.8); }
+  .plate-grid .project-plate:nth-child(2) { transform: translateY(34px) scale(0.76); }
+  .plate-grid .project-plate:nth-child(3) { transform: translateX(-58%) translateY(20px) scale(0.8); }
+
+  .plate-grid .project-plate.in-view:nth-child(1),
+  .plate-grid .project-plate.in-view:nth-child(3) {
+    transform: translateX(0) translateY(0) scale(1);
+    transition:
+      opacity 0.9s cubic-bezier(0.2,0.7,0.2,1) 0.12s,
+      transform 0.9s cubic-bezier(0.2,0.7,0.2,1) 0.12s,
+      z-index 0s linear 0.32s;
+  }
+  .plate-grid .project-plate.in-view:nth-child(2) {
+    transform: translateX(0) translateY(0) scale(1);
+    transition:
+      opacity 0.9s cubic-bezier(0.2,0.7,0.2,1) 0.05s,
+      transform 0.9s cubic-bezier(0.2,0.7,0.2,1) 0.05s,
+      z-index 0s linear 0.25s;
+  }
+}
 
 /* ==========================================================================
    Contact
@@ -391,19 +429,19 @@ main { position: relative; z-index: 1; }
   letter-spacing: 0.08em;
 }
 .contact-value {
-  color: var(--blue-deep);
+  color: var(--blue);
   font-weight: 500;
   transition: color 0.2s ease;
 }
-.contact-value:hover { color: var(--blue); }
+.contact-value:hover { color: var(--blue-bright); }
 
 /* ==========================================================================
-   Footer
+   Footer — always above the canvas, same as the hero
    ========================================================================== */
 
 .site-footer {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-persistent);
   display: flex;
   justify-content: space-between;
   padding: 32px clamp(20px, 5vw, 56px) 44px;
@@ -425,7 +463,7 @@ main { position: relative; z-index: 1; }
     position: absolute;
     top: var(--nav-height);
     left: 0; right: 0;
-    background: rgba(241, 243, 245, 0.97);
+    background: rgba(11, 13, 17, 0.97);
     backdrop-filter: blur(14px);
     flex-direction: column;
     gap: 0;
@@ -448,7 +486,7 @@ main { position: relative; z-index: 1; }
   }
   .nav-links a:last-child { border-bottom: none; }
 
-  .section { padding: 88px 20px; }
+  .section { padding: 100px 20px; }
 }
 
 /* ==========================================================================
