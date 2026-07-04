@@ -95,6 +95,7 @@ button:focus-visible {
   position: fixed;
   inset: 0;
   z-index: var(--z-canvas);
+  pointer-events: none;
   background:
     radial-gradient(ellipse 1100px 900px at 50% 35%, #1a222c 0%, #10151b 48%, var(--bg) 80%);
 }
@@ -314,18 +315,20 @@ main { position: static; }
     0 24px 50px -22px rgba(0,0,0,0.7),
     0 0 34px -22px rgba(61,158,255,0.4);
   opacity: 0;
-  transform: translateY(26px) scale(0.82);
+  transform: translateY(26px) scale(0.78);
   z-index: var(--z-plate-hidden);
   transition:
-    opacity 0.9s cubic-bezier(0.2,0.7,0.2,1),
-    transform 0.9s cubic-bezier(0.2,0.7,0.2,1),
-    z-index 0s linear 0.2s;
+    opacity 0.4s ease,
+    transform 0.95s cubic-bezier(0.2,0.7,0.2,1);
   will-change: opacity, transform;
 }
 
 .plate.in-view {
   opacity: 1;
   transform: translateY(0) scale(1);
+}
+
+.plate.in-front {
   z-index: var(--z-plate-shown);
 }
 
@@ -346,7 +349,7 @@ main { position: static; }
 
 .plate-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr;
   gap: 22px;
 }
 
@@ -354,6 +357,27 @@ main { position: static; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.plate-hook {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.plate-platform {
+  display: inline-block;
+  align-self: flex-start;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--blue-bright);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 7px 16px;
 }
 
 .plate-tag {
@@ -381,24 +405,23 @@ main { position: static; }
 /* on wide screens, project plates gather toward the middle (where the
    cylinder is) before fanning out to their grid slots */
 @media (min-width: 761px) {
-  .plate-grid .project-plate:nth-child(1) { transform: translateX(58%) translateY(20px) scale(0.8); }
-  .plate-grid .project-plate:nth-child(2) { transform: translateY(34px) scale(0.76); }
-  .plate-grid .project-plate:nth-child(3) { transform: translateX(-58%) translateY(20px) scale(0.8); }
+  .plate-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .plate-grid .project-plate:nth-child(1) { transform: translateX(58%) translateY(20px) scale(0.78); }
+  .plate-grid .project-plate:nth-child(2) { transform: translateY(30px) scale(0.75); }
+  .plate-grid .project-plate:nth-child(3) { transform: translateX(-58%) translateY(20px) scale(0.78); }
 
   .plate-grid .project-plate.in-view:nth-child(1),
+  .plate-grid .project-plate.in-view:nth-child(2),
   .plate-grid .project-plate.in-view:nth-child(3) {
     transform: translateX(0) translateY(0) scale(1);
-    transition:
-      opacity 0.9s cubic-bezier(0.2,0.7,0.2,1) 0.12s,
-      transform 0.9s cubic-bezier(0.2,0.7,0.2,1) 0.12s,
-      z-index 0s linear 0.32s;
   }
-  .plate-grid .project-plate.in-view:nth-child(2) {
-    transform: translateX(0) translateY(0) scale(1);
-    transition:
-      opacity 0.9s cubic-bezier(0.2,0.7,0.2,1) 0.05s,
-      transform 0.9s cubic-bezier(0.2,0.7,0.2,1) 0.05s,
-      z-index 0s linear 0.25s;
+
+  .plate-grid .project-plate:nth-child(1),
+  .plate-grid .project-plate:nth-child(2) {
+    transition-delay: 0.08s;
   }
 }
 
@@ -450,13 +473,14 @@ main { position: static; }
   border-top: 1px solid var(--panel-border);
 }
 
+.footer-link { transition: color 0.2s ease; }
+.footer-link:hover { color: var(--blue-bright); }
+
 /* ==========================================================================
    Responsive
    ========================================================================== */
 
 @media (max-width: 760px) {
-  .plate-grid { grid-template-columns: 1fr; }
-
   .nav-toggle { display: flex; }
 
   .nav-links {
@@ -487,6 +511,100 @@ main { position: static; }
   .nav-links a:last-child { border-bottom: none; }
 
   .section { padding: 100px 20px; }
+}
+
+/* ==========================================================================
+   Policy pages — plain and readable, no cylinder theatrics
+   ========================================================================== */
+
+.policy-main {
+  position: relative;
+  z-index: var(--z-persistent);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(var(--nav-height) + 56px) clamp(20px, 5vw, 56px) 100px;
+}
+
+.policy-title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.policy-updated {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  margin-bottom: 32px;
+}
+
+.policy-intro {
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.75;
+  margin-bottom: 40px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.policy-section {
+  margin-bottom: 40px;
+  padding-top: 32px;
+  border-top: 1px solid var(--panel-border);
+}
+.policy-section:first-of-type {
+  padding-top: 0;
+  border-top: none;
+}
+
+.policy-h2 {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
+.policy-h3 {
+  font-family: var(--font-body);
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 22px 0 8px;
+}
+
+.policy-body {
+  color: var(--ink-soft);
+  font-size: 15.5px;
+  line-height: 1.75;
+  margin-bottom: 14px;
+}
+
+.policy-list {
+  color: var(--ink-soft);
+  font-size: 15.5px;
+  line-height: 1.75;
+  padding-left: 22px;
+  margin-bottom: 14px;
+}
+.policy-list li { list-style: disc; margin-bottom: 6px; }
+
+.policy-body a,
+.policy-list a {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.policy-body a:hover,
+.policy-list a:hover { color: var(--blue-bright); }
+
+.placeholder {
+  color: var(--blue-bright);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  border-bottom: 1px dashed var(--blue-deep);
 }
 
 /* ==========================================================================
