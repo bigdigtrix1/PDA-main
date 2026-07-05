@@ -402,9 +402,11 @@ main { position: static; }
 .plate-pending .plate-tag { color: var(--ink-faint); }
 .plate-pending .plate-body { color: var(--ink-faint); }
 
-/* on wide screens, project plates emerge from around the cylinder's curve —
-   each one rotates in from the side it wraps past, with a bit of depth, then
-   unrotates flat as it settles into its grid slot */
+/* on wide screens, project plates orbit in around the cylinder's curve —
+   a real arced path (not a straight-line slide), computed from a circle
+   around the cylinder's axis: x = R sin(theta), depth = R (cos(theta) - 1).
+   A plain transition can only interpolate two states in a straight line, so
+   this needs a multi-stop @keyframes animation to actually curve. */
 @media (min-width: 761px) {
   .plate-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -413,25 +415,52 @@ main { position: static; }
   /* perspective() lives inside each card's own transform (not on the
      grid) so it doesn't create a stacking context on the parent — that
      would trap the card's z-index locally and hide it behind the canvas */
+  .plate-grid .project-plate {
+    transition: none;
+  }
+
   .plate-grid .project-plate:nth-child(1) {
-    transform: perspective(1500px) translateX(70%) translateY(20px) translateZ(-140px) rotateY(-50deg) scale(0.7);
+    transform: perspective(1500px) translateX(451px) translateY(24px) translateZ(-316px) rotateY(-55deg) scale(0.65);
   }
   .plate-grid .project-plate:nth-child(2) {
     transform: perspective(1500px) translateY(28px) translateZ(-180px) rotateX(20deg) scale(0.68);
   }
   .plate-grid .project-plate:nth-child(3) {
-    transform: perspective(1500px) translateX(-70%) translateY(20px) translateZ(-140px) rotateY(50deg) scale(0.7);
+    transform: perspective(1500px) translateX(-451px) translateY(24px) translateZ(-316px) rotateY(55deg) scale(0.65);
   }
 
-  .plate-grid .project-plate.in-view:nth-child(1),
-  .plate-grid .project-plate.in-view:nth-child(2),
+  .plate-grid .project-plate.in-view:nth-child(1) {
+    animation: orbit-in-left 1.15s cubic-bezier(0.22,0.7,0.2,1) forwards;
+  }
+  .plate-grid .project-plate.in-view:nth-child(2) {
+    animation: orbit-in-center 1.15s cubic-bezier(0.22,0.7,0.2,1) forwards;
+    animation-delay: 0.08s;
+  }
   .plate-grid .project-plate.in-view:nth-child(3) {
-    transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) rotateX(0deg) scale(1);
+    animation: orbit-in-right 1.15s cubic-bezier(0.22,0.7,0.2,1) forwards;
+    animation-delay: 0.08s;
   }
 
-  .plate-grid .project-plate:nth-child(1),
-  .plate-grid .project-plate:nth-child(2) {
-    transition-delay: 0.08s;
+  @keyframes orbit-in-left {
+    0%   { opacity: 0; transform: perspective(1500px) translateX(451px) translateY(24px) translateZ(-316px) rotateY(-55deg) scale(0.65); }
+    22%  { opacity: 1; }
+    45%  { transform: perspective(1500px) translateX(275px) translateY(14px) translateZ(-87px) rotateY(-27.5deg) scale(0.82); }
+    75%  { transform: perspective(1500px) translateX(88px) translateY(5px) translateZ(-8px) rotateY(-8deg) scale(0.95); }
+    100% { opacity: 1; transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) scale(1); }
+  }
+
+  @keyframes orbit-in-right {
+    0%   { opacity: 0; transform: perspective(1500px) translateX(-451px) translateY(24px) translateZ(-316px) rotateY(55deg) scale(0.65); }
+    22%  { opacity: 1; }
+    45%  { transform: perspective(1500px) translateX(-275px) translateY(14px) translateZ(-87px) rotateY(27.5deg) scale(0.82); }
+    75%  { transform: perspective(1500px) translateX(-88px) translateY(5px) translateZ(-8px) rotateY(8deg) scale(0.95); }
+    100% { opacity: 1; transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) scale(1); }
+  }
+
+  @keyframes orbit-in-center {
+    0%   { opacity: 0; transform: perspective(1500px) translateY(28px) translateZ(-180px) rotateX(20deg) scale(0.68); }
+    30%  { opacity: 1; }
+    100% { opacity: 1; transform: perspective(1500px) translateY(0) translateZ(0) rotateX(0deg) scale(1); }
   }
 }
 
