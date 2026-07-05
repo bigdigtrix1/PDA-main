@@ -402,11 +402,13 @@ main { position: static; }
 .plate-pending .plate-tag { color: var(--ink-faint); }
 .plate-pending .plate-body { color: var(--ink-faint); }
 
-/* on wide screens, project plates orbit in around the cylinder's curve —
-   a real arced path (not a straight-line slide), computed from a circle
-   around the cylinder's axis: x = R sin(theta), depth = R (cos(theta) - 1).
-   A plain transition can only interpolate two states in a straight line, so
-   this needs a multi-stop @keyframes animation to actually curve. */
+/* on wide screens, project plates behave like a real carousel around the
+   cylinder: fully invisible while on the "hidden" side of the arc (computed
+   from a circle around the cylinder's axis: x = R sin(theta), depth =
+   R (cos(theta) - 1)), fading into view once you've scrolled to this
+   section, then looping forever — swinging out from behind the cylinder,
+   resting in view long enough to read, then swinging back and repeating.
+   Never fully settling, by design. */
 @media (min-width: 761px) {
   .plate-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -414,53 +416,76 @@ main { position: static; }
 
   /* perspective() lives inside each card's own transform (not on the
      grid) so it doesn't create a stacking context on the parent — that
-     would trap the card's z-index locally and hide it behind the canvas */
+     would trap the card's z-index locally and hide it behind the canvas.
+     z-index is pinned in front permanently: visibility is carried entirely
+     by opacity in the keyframes below, so there's no need to race a
+     z-index swap against the fade. */
   .plate-grid .project-plate {
     transition: none;
+    z-index: var(--z-plate-shown);
   }
 
   .plate-grid .project-plate:nth-child(1) {
-    transform: perspective(1500px) translateX(451px) translateY(24px) translateZ(-316px) rotateY(-55deg) scale(0.65);
+    opacity: 0;
+    transform: perspective(1500px) translateX(188px) translateY(24px) translateZ(-132px) rotateY(-55deg) scale(0.65);
   }
   .plate-grid .project-plate:nth-child(2) {
+    opacity: 0;
     transform: perspective(1500px) translateY(28px) translateZ(-180px) rotateX(20deg) scale(0.68);
   }
   .plate-grid .project-plate:nth-child(3) {
-    transform: perspective(1500px) translateX(-451px) translateY(24px) translateZ(-316px) rotateY(55deg) scale(0.65);
+    opacity: 0;
+    transform: perspective(1500px) translateX(-188px) translateY(24px) translateZ(-132px) rotateY(55deg) scale(0.65);
   }
 
   .plate-grid .project-plate.in-view:nth-child(1) {
-    animation: orbit-in-left 1.15s cubic-bezier(0.22,0.7,0.2,1) forwards;
+    animation: orbit-loop-left 10s ease-in-out infinite;
   }
   .plate-grid .project-plate.in-view:nth-child(2) {
-    animation: orbit-in-center 1.15s cubic-bezier(0.22,0.7,0.2,1) forwards;
-    animation-delay: 0.08s;
+    animation: orbit-loop-center 10s ease-in-out infinite;
+    animation-delay: 0.3s;
   }
   .plate-grid .project-plate.in-view:nth-child(3) {
-    animation: orbit-in-right 1.15s cubic-bezier(0.22,0.7,0.2,1) forwards;
-    animation-delay: 0.08s;
+    animation: orbit-loop-right 10s ease-in-out infinite;
+    animation-delay: 0.6s;
   }
 
-  @keyframes orbit-in-left {
-    0%   { opacity: 0; transform: perspective(1500px) translateX(451px) translateY(24px) translateZ(-316px) rotateY(-55deg) scale(0.65); }
-    22%  { opacity: 1; }
-    45%  { transform: perspective(1500px) translateX(275px) translateY(14px) translateZ(-87px) rotateY(-27.5deg) scale(0.82); }
-    75%  { transform: perspective(1500px) translateX(88px) translateY(5px) translateZ(-8px) rotateY(-8deg) scale(0.95); }
-    100% { opacity: 1; transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) scale(1); }
+  @keyframes orbit-loop-left {
+    0%, 100% { opacity: 0; transform: perspective(1500px) translateX(188px) translateY(24px) translateZ(-132px) rotateY(-55deg) scale(0.65); }
+    10%  { opacity: 1; transform: perspective(1500px) translateX(115px) translateY(14px) translateZ(-36px) rotateY(-27.5deg) scale(0.82); }
+    22%  { transform: perspective(1500px) translateX(36px) translateY(5px) translateZ(-3px) rotateY(-8deg) scale(0.95); }
+    30%, 70% { opacity: 1; transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) scale(1); }
+    78% { transform: perspective(1500px) translateX(36px) translateY(5px) translateZ(-3px) rotateY(-8deg) scale(0.95); }
+    90% { opacity: 1; transform: perspective(1500px) translateX(115px) translateY(14px) translateZ(-36px) rotateY(-27.5deg) scale(0.82); }
+    96% { opacity: 0; }
   }
 
-  @keyframes orbit-in-right {
-    0%   { opacity: 0; transform: perspective(1500px) translateX(-451px) translateY(24px) translateZ(-316px) rotateY(55deg) scale(0.65); }
-    22%  { opacity: 1; }
-    45%  { transform: perspective(1500px) translateX(-275px) translateY(14px) translateZ(-87px) rotateY(27.5deg) scale(0.82); }
-    75%  { transform: perspective(1500px) translateX(-88px) translateY(5px) translateZ(-8px) rotateY(8deg) scale(0.95); }
-    100% { opacity: 1; transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) scale(1); }
+  @keyframes orbit-loop-right {
+    0%, 100% { opacity: 0; transform: perspective(1500px) translateX(-188px) translateY(24px) translateZ(-132px) rotateY(55deg) scale(0.65); }
+    10%  { opacity: 1; transform: perspective(1500px) translateX(-115px) translateY(14px) translateZ(-36px) rotateY(27.5deg) scale(0.82); }
+    22%  { transform: perspective(1500px) translateX(-36px) translateY(5px) translateZ(-3px) rotateY(8deg) scale(0.95); }
+    30%, 70% { opacity: 1; transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) scale(1); }
+    78% { transform: perspective(1500px) translateX(-36px) translateY(5px) translateZ(-3px) rotateY(8deg) scale(0.95); }
+    90% { opacity: 1; transform: perspective(1500px) translateX(-115px) translateY(14px) translateZ(-36px) rotateY(27.5deg) scale(0.82); }
+    96% { opacity: 0; }
   }
 
-  @keyframes orbit-in-center {
-    0%   { opacity: 0; transform: perspective(1500px) translateY(28px) translateZ(-180px) rotateX(20deg) scale(0.68); }
-    30%  { opacity: 1; }
-    100% { opacity: 1; transform: perspective(1500px) translateY(0) translateZ(0) rotateX(0deg) scale(1); }
+  @keyframes orbit-loop-center {
+    0%, 100% { opacity: 0; transform: perspective(1500px) translateY(28px) translateZ(-180px) rotateX(20deg) scale(0.68); }
+    12% { opacity: 1; transform: perspective(1500px) translateY(10px) translateZ(-60px) rotateX(8deg) scale(0.88); }
+    30%, 70% { opacity: 1; transform: perspective(1500px) translateY(0) translateZ(0) rotateX(0deg) scale(1); }
+    88% { transform: perspective(1500px) translateY(10px) translateZ(-60px) rotateX(8deg) scale(0.88); }
+    96% { opacity: 0; }
+  }
+}
+
+/* perpetual motion is disabled for reduced-motion users — settle permanently
+   in the readable resting pose instead of looping forever */
+@media (min-width: 761px) and (prefers-reduced-motion: reduce) {
+  .plate-grid .project-plate.in-view {
+    animation: none;
+    opacity: 1;
+    transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) rotateX(0deg) scale(1);
   }
 }
 
