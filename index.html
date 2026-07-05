@@ -28,6 +28,11 @@
   <!-- Persistent animated backdrop. Populated by js/main.js. Empty/hidden gracefully if WebGL is unavailable or reduced motion is requested. -->
   <div id="bg-canvas-container" aria-hidden="true"></div>
 
+  <!-- Only used on wide screens with full motion: the About/Projects/Contact
+       plates get adopted into here and mounted onto the rotating cylinder
+       as a carousel. Left empty (and unused) everywhere else. -->
+  <div id="css3d-container" aria-hidden="true"></div>
+
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-nav">

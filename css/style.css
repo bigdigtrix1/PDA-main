@@ -106,9 +106,29 @@ button:focus-visible {
   height: 100%;
 }
 
+#css3d-container {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 body.no-motion #bg-canvas-container,
 body.no-webgl #bg-canvas-container canvas {
   display: none;
+}
+
+/* When plates are lifted out of flow and mounted onto the cylinder, their
+   section still needs to occupy a full viewport of scroll height (that's
+   what drives the rotation), just centered rather than showing content. */
+body.true-mount #about,
+body.true-mount #projects,
+body.true-mount #contact {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* ==========================================================================
@@ -357,12 +377,6 @@ main { position: static; }
   display: flex;
   flex-direction: column;
   gap: 10px;
-  /* project-plates are never governed by the .in-front class (they're
-     driven by initProjectCarousel instead, which only ever touches opacity
-     and transform) — pin them in front of the canvas unconditionally, on
-     every screen size, or they'd default to the base .plate z-index and
-     sit behind it, invisible, regardless of their opacity. */
-  z-index: var(--z-plate-shown);
 }
 
 .plate-hook {
@@ -408,38 +422,30 @@ main { position: static; }
 .plate-pending .plate-tag { color: var(--ink-faint); }
 .plate-pending .plate-body { color: var(--ink-faint); }
 
-/* On wide screens, project plates are positioned and posed almost entirely
-   by js/main.js's initProjectCarousel — it sets opacity/transform inline on
-   every scroll event (and on resize), scrubbing each panel from hidden
-   (behind the hologram) to resting tangent to it, like a physical extension
-   of the hull rather than a flat grid far away from it. The CSS below is
-   just the pre-JS fallback pose (so there's no flash of an unstyled full
-   grid before the first scroll handler runs) plus a short transition that
-   smooths between the throttled per-frame updates. */
+/* This is the fallback layout only — mobile, reduced motion, or no WebGL,
+   whenever the true CSS3D mount (js/main.js's trySetupCarousel) isn't
+   active. On wide screens with full motion, these plates get pulled out of
+   flow and glued directly onto the rotating cylinder instead; project
+   plates gathering toward the middle here before fanning out is just the
+   2D approximation of that for everyone else. */
 @media (min-width: 761px) {
   .plate-grid {
-    grid-template-columns: repeat(3, minmax(0, 300px));
-    justify-content: center;
-    gap: 12px;
-    row-gap: 22px;
+    grid-template-columns: repeat(3, 1fr);
   }
 
-  /* perspective() lives inside each card's own transform (not on the grid)
-     so it doesn't create a stacking context on the parent — that would trap
-     the card's z-index locally and hide it behind the canvas. */
-  .plate-grid .project-plate {
-    opacity: 0;
-    transition: transform 0.12s linear, opacity 0.12s linear;
+  .plate-grid .project-plate:nth-child(1) { transform: translateX(58%) translateY(20px) scale(0.78); }
+  .plate-grid .project-plate:nth-child(2) { transform: translateY(30px) scale(0.75); }
+  .plate-grid .project-plate:nth-child(3) { transform: translateX(-58%) translateY(20px) scale(0.78); }
+
+  .plate-grid .project-plate.in-view:nth-child(1),
+  .plate-grid .project-plate.in-view:nth-child(2),
+  .plate-grid .project-plate.in-view:nth-child(3) {
+    transform: translateX(0) translateY(0) scale(1);
   }
 
-  .plate-grid .project-plate:nth-child(1) {
-    transform: perspective(1500px) translateX(230px) translateY(26px) translateZ(-190px) rotateY(-60deg) scale(0.55);
-  }
+  .plate-grid .project-plate:nth-child(1),
   .plate-grid .project-plate:nth-child(2) {
-    transform: perspective(1500px) translateY(30px) translateZ(-210px) rotateX(22deg) scale(0.55);
-  }
-  .plate-grid .project-plate:nth-child(3) {
-    transform: perspective(1500px) translateX(-230px) translateY(26px) translateZ(-190px) rotateY(60deg) scale(0.55);
+    transition-delay: 0.08s;
   }
 }
 

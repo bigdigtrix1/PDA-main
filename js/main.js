@@ -1,20 +1,13 @@
 /* ==========================================================================
    PDA — site behavior
-   Sections: 1) helpers  2) WebGL cylinder backdrop  3) plate reveal
-   4) nav behavior
+   Sections: 1) helpers  2) WebGL cylinder + true-3D carousel mount
+   3) carousel mount setup  4) 2D plate reveal (fallback)  5) nav behavior
+   6) init
    ========================================================================== */
 
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-// Shared between the WebGL hologram and the DOM project panels: how far
-// revealed each of the 3 panels currently is (0 = hidden behind the hull,
-// 1 = fully out as an extension of it). The hull shader reads this every
-// frame to fade the hex pattern in behind whichever panel is showing.
-let projectRevealProgress = [0, 0, 0];
-// Angle (radians, relative to straight-on-camera) each panel sits at around
-// the hull's circumference — shared source of truth for the shader's clear
-// zones and the panels' own CSS angle so the two line up visually.
-const PROJECT_PANEL_ANGLES = [-0.5, 0, 0.5];
+const isSmallScreen = window.innerWidth < 900;
+const useTrueMount = !prefersReducedMotion && !isSmallScreen;
 
 function supportsWebGL() {
   try {
@@ -27,7 +20,8 @@ function supportsWebGL() {
 }
 
 /* ==========================================================================
-   1. WebGL cylinder backdrop
+   1. WebGL cylinder backdrop, with an optional true-3D carousel of plates
+      mounted onto it (wide screens, full motion, WebGL available only)
    ========================================================================== */
 
 async function initCylinderBackdrop() {
@@ -76,19 +70,20 @@ async function initCylinderBackdrop() {
     } catch (err2) {
       console.error('[PDA] three.js failed to load entirely — showing the static gradient fallback instead.', err2);
       document.body.classList.add('no-webgl');
+      initPlateReveal();
       return;
     }
   }
   console.log('[PDA] three.js loaded — building the holographic cylinder scene.');
 
-  const isSmall = window.innerWidth < 700;
+  const isSmall = isSmallScreen;
   const radialSegments = isSmall ? 40 : 72;
 
   const CYL_RADIUS = 1.7;
   const CYL_HEIGHT = 6.4;
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x0b0d11, 12, 30);
+  scene.fog = new THREE.Fog(0x0b0d11, 13, 30);
 
   const camera = new THREE.PerspectiveCamera(
     46,
@@ -96,9 +91,8 @@ async function initCylinderBackdrop() {
     0.1,
     100
   );
-  camera.position.set(0.9, 0.6, 7.2);
+  camera.position.set(0, 0.5, 7.4);
   camera.lookAt(0, 0.1, 0);
-  const cameraFrontAngle = Math.atan2(camera.position.z, camera.position.x);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -169,9 +163,15 @@ async function initCylinderBackdrop() {
   const hullUniforms = {
     uColor: { value: new THREE.Color(0x2f8ce6) },
     uColorBright: { value: new THREE.Color(0xbfe6ff) },
-    uFrontAngle: { value: cameraFrontAngle },
-    uClearAngles: { value: new THREE.Vector3(...PROJECT_PANEL_ANGLES) },
-    uClearAmounts: { value: new THREE.Vector3(0, 0, 0) },
+    // Up to 5 "clear zones" (About, 3 project cards, Contact) where the hex
+    // pattern fades so a mounted panel reads clearly. Angles are in the
+    // hull's own local space (see vAngle below), so a clearing stays
+    // correctly lined up with its panel no matter how the group is
+    // currently rotated — both rotate together, being in the same group.
+    // Populated for real once (if) the carousel mount succeeds; amounts
+    // start at 0, so with nothing mounted the hull just shows no clearing.
+    uClearAngles: { value: [0, 0, 0, 0, 0] },
+    uClearAmounts: { value: [0, 0, 0, 0, 0] },
     uClearWidth: { value: 0.45 },
   };
   const bodyGeo = new THREE.CylinderGeometry(CYL_RADIUS, CYL_RADIUS, CYL_HEIGHT, radialSegments, 1, true);
@@ -184,27 +184,29 @@ async function initCylinderBackdrop() {
       varying vec2 vUv;
       varying vec3 vNormal;
       varying vec3 vViewDir;
-      varying vec3 vWorldPos;
+      varying float vAngle;
       void main() {
         vUv = uv;
         vNormal = normalize(normalMatrix * normal);
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         vViewDir = normalize(-mvPosition.xyz);
-        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        // local-space angle around the hull's own axis — matches the same
+        // sin/cos convention the carousel mount positions panels with, so
+        // no camera or world-space correction is needed to line them up
+        vAngle = atan(position.x, position.z);
         gl_Position = projectionMatrix * mvPosition;
       }
     `,
     fragmentShader: `
       uniform vec3 uColor;
       uniform vec3 uColorBright;
-      uniform float uFrontAngle;
-      uniform vec3 uClearAngles;
-      uniform vec3 uClearAmounts;
+      uniform float uClearAngles[5];
+      uniform float uClearAmounts[5];
       uniform float uClearWidth;
       varying vec2 vUv;
       varying vec3 vNormal;
       varying vec3 vViewDir;
-      varying vec3 vWorldPos;
+      varying float vAngle;
 
       // hex-cell edge distance (0 at cell center, 0.5 at the shared border)
       // plus a per-cell hash, so the whole surface tiles edge-to-edge with
@@ -240,13 +242,13 @@ async function initCylinderBackdrop() {
 
         float alpha = clamp(0.1 + panelShade + fresnel * 0.3 + hexBorder * 0.1, 0.0, 1.0);
 
-        // fade the hologram surface where a panel currently sits, so its
-        // content reads clearly instead of competing with the hex texture
-        float relAngle = atan(vWorldPos.z, vWorldPos.x) - uFrontAngle;
+        // fade the hologram surface where a mounted panel currently sits,
+        // so its content reads clearly instead of competing with the hex
         float clear = 0.0;
-        clear = max(clear, smoothstep(uClearWidth, 0.0, angleDiff(relAngle, uClearAngles.x)) * uClearAmounts.x);
-        clear = max(clear, smoothstep(uClearWidth, 0.0, angleDiff(relAngle, uClearAngles.y)) * uClearAmounts.y);
-        clear = max(clear, smoothstep(uClearWidth, 0.0, angleDiff(relAngle, uClearAngles.z)) * uClearAmounts.z);
+        for (int i = 0; i < 5; i++) {
+          float d = angleDiff(vAngle, uClearAngles[i]);
+          clear = max(clear, smoothstep(uClearWidth, 0.0, d) * uClearAmounts[i]);
+        }
         alpha *= mix(1.0, 0.18, clear);
 
         vec3 color = mix(uColor, uColorBright, clamp(fresnel * 0.9, 0.0, 1.0));
@@ -381,72 +383,247 @@ async function initCylinderBackdrop() {
   const particles = new THREE.Points(particleGeo, particleMat);
   scene.add(particles);
 
+  /* ------------------------------------------------------------------
+     True-3D carousel mount: adopts the real About/Vuil/Sens/Orbiteer/
+     Contact plates as CSS3DObjects, glued to the cylinder group so they
+     rotate with it. Only attempted on wide screens with full motion.
+     ------------------------------------------------------------------ */
+
+  let mounted = false;
+  let cssRenderer = null;
+  let mountedObjects = [];
+
+  if (useTrueMount) {
+    const result = await trySetupCarousel(THREE, cylinderGroup);
+    if (result) {
+      mounted = true;
+      cssRenderer = result.cssRenderer;
+      mountedObjects = result.mountedObjects;
+
+      // Sync the hull's clear-zone angles to each panel's real mount
+      // angle, whatever it ended up being — read back rather than
+      // recomputed, so the two can never drift out of alignment.
+      const angles = mountedObjects.map((m) => m.angle);
+      while (angles.length < 5) angles.push(0);
+      hullUniforms.uClearAngles.value = angles;
+
+      document.body.classList.add('true-mount');
+      console.log('[PDA] Carousel mount active —', mountedObjects.length, 'plates glued to the cylinder.');
+    }
+  }
+
+  if (!mounted) {
+    initPlateReveal();
+  }
+
   function onResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     bloomComposer.setSize(window.innerWidth, window.innerHeight);
     finalComposer.setSize(window.innerWidth, window.innerHeight);
+    if (mounted && cssRenderer) {
+      cssRenderer.setSize(window.innerWidth, window.innerHeight);
+    }
     renderNow();
   }
   window.addEventListener('resize', onResize);
 
   if (prefersReducedMotion) {
     cylinderGroup.rotation.y = 0.6;
-    hullUniforms.uClearAmounts.value.set(1, 1, 1);
     renderNow();
     console.log('[PDA] Reduced motion is on — cylinder is static.');
     return;
   }
 
-  // -- scroll-linked rotation, always active, never fades out --
-  let scrollAngle = 0;
-  function readScroll() {
-    const total = document.documentElement.scrollHeight - window.innerHeight;
-    const overall = total > 0 ? window.scrollY / total : 0;
-    scrollAngle = overall * Math.PI * 5;
-  }
-  window.addEventListener('scroll', readScroll, { passive: true });
-  readScroll();
-
-  let ambientAngle = 0;
-  let raf = null;
-
-  function tick() {
-    raf = requestAnimationFrame(tick);
-
-    ambientAngle += 0.0016;
-    cylinderGroup.rotation.y = ambientAngle + scrollAngle;
-    particles.rotation.y += 0.00035;
-    hullUniforms.uClearAmounts.value.set(
-      projectRevealProgress[0],
-      projectRevealProgress[1],
-      projectRevealProgress[2]
-    );
-
-    renderNow();
+  if (mounted) {
+    runMountedLoop();
+  } else {
+    runAmbientLoop();
   }
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (raf) cancelAnimationFrame(raf);
-      raf = null;
-    } else if (!raf) {
-      tick();
+  // -- fallback motion: ambient spin + loose scroll offset, cylinder not mounted --
+  function runAmbientLoop() {
+    let scrollAngle = 0;
+    function readScroll() {
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      const overall = total > 0 ? window.scrollY / total : 0;
+      scrollAngle = overall * Math.PI * 5;
     }
-  });
+    window.addEventListener('scroll', readScroll, { passive: true });
+    readScroll();
 
-  tick();
+    let ambientAngle = 0;
+    let raf = null;
+    function tick() {
+      raf = requestAnimationFrame(tick);
+      ambientAngle += 0.0016;
+      cylinderGroup.rotation.y = ambientAngle + scrollAngle;
+      particles.rotation.y += 0.00035;
+      renderNow();
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { if (raf) cancelAnimationFrame(raf); raf = null; }
+      else if (!raf) { tick(); }
+    });
+    tick();
+  }
+
+  // -- mounted motion: rotation is a precise function of scroll position,
+  // so each plate is exactly front-on right as its section is reached --
+  function runMountedLoop() {
+    function getStops() {
+      const ids = ['about', 'projects', 'contact'];
+      // Bringing an object mounted at angle θ to face the camera requires
+      // rotating the group by -θ (verified against the position/rotation
+      // math below) — so these targets are the negative of each object's
+      // mount angle, not the angle itself.
+      const angles = [0, -(2 * Math.PI) / 3, -(4 * Math.PI) / 3];
+      const heroEl = document.getElementById('hero');
+      const heroHeight = heroEl ? heroEl.offsetHeight : 0;
+      const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+
+      // A modest hold angle, just for a smooth handoff into the first
+      // interpolation — actual hero visibility is forced separately below,
+      // since with three stops 120° apart there's no single angle where
+      // all three would be hidden by the cosine falloff alone.
+      const stops = [{ y: Math.min(heroHeight, maxScrollY), angle: Math.PI / 6 }];
+      ids.forEach((id, i) => {
+        const el = document.getElementById(id);
+        if (el) {
+          const rawY = el.offsetTop + el.offsetHeight / 2;
+          stops.push({ y: Math.min(rawY, maxScrollY), angle: angles[i] });
+        }
+      });
+      return stops;
+    }
+
+    let stops = getStops();
+    window.addEventListener('resize', () => { stops = getStops(); });
+
+    function targetAngle() {
+      const y = window.scrollY;
+      if (y <= stops[0].y) return stops[0].angle;
+      for (let i = 0; i < stops.length - 1; i++) {
+        const a = stops[i], b = stops[i + 1];
+        if (y >= a.y && y <= b.y) {
+          const t = (y - a.y) / (b.y - a.y || 1);
+          return a.angle + t * (b.angle - a.angle);
+        }
+      }
+      return stops[stops.length - 1].angle;
+    }
+
+    let currentAngle = stops[0].angle;
+    let raf = null;
+
+    function updateMountedOpacity(groupAngle, forceHidden) {
+      mountedObjects.forEach((m, i) => {
+        let opacity;
+        if (forceHidden) {
+          opacity = 0;
+        } else {
+          let effective = (m.angle + groupAngle) % (Math.PI * 2);
+          if (effective > Math.PI) effective -= Math.PI * 2;
+          if (effective < -Math.PI) effective += Math.PI * 2;
+          opacity = Math.max(0, Math.cos(effective));
+        }
+        m.el.style.opacity = String(opacity);
+        m.el.style.pointerEvents = opacity > 0.15 ? 'auto' : 'none';
+        // drives the hull's matching clear zone — the hologram fades in
+        // behind a panel exactly as it fades into view, and back again
+        hullUniforms.uClearAmounts.value[i] = opacity;
+      });
+    }
+
+    function tick() {
+      raf = requestAnimationFrame(tick);
+      const target = targetAngle();
+      currentAngle += (target - currentAngle) * 0.12;
+      cylinderGroup.rotation.y = currentAngle;
+      particles.rotation.y += 0.00035;
+      updateMountedOpacity(currentAngle, window.scrollY <= stops[0].y);
+      renderNow();
+      cssRenderer.render(scene, camera);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { if (raf) cancelAnimationFrame(raf); raf = null; }
+      else if (!raf) { tick(); }
+    });
+
+    tick();
+  }
+}
+
+/* ------------------------------------------------------------------
+   Sets up the CSS3D carousel. Returns {cssRenderer, mountedObjects} on
+   success, or null if anything about it fails, so the caller can fall
+   back cleanly.
+   ------------------------------------------------------------------ */
+
+async function trySetupCarousel(THREE, cylinderGroup) {
+  try {
+    const { CSS3DRenderer, CSS3DObject } = await import('three/addons/renderers/CSS3DRenderer.js');
+
+    const container = document.getElementById('css3d-container');
+    if (!container) return null;
+
+    const cssRenderer = new CSS3DRenderer({ element: container });
+    cssRenderer.setSize(window.innerWidth, window.innerHeight);
+
+    const PROJECTS_ANGLE = (2 * Math.PI) / 3;
+    const CONTACT_ANGLE = (4 * Math.PI) / 3;
+    const MOUNT_RADIUS = 2.2;
+    const SCALE = 0.0042;
+    const PANEL_WIDTH = 300;
+    const CLUSTER_PANEL_WIDTH = 210;
+    const CLUSTER_SPREAD = 0.55; // radians between adjacent project cards
+
+    const targets = [
+      { el: document.querySelector('#about .plate'), angle: 0, width: PANEL_WIDTH },
+      { el: document.querySelector('#projects .project-plate:nth-child(1)'), angle: PROJECTS_ANGLE - CLUSTER_SPREAD, width: CLUSTER_PANEL_WIDTH },
+      { el: document.querySelector('#projects .project-plate:nth-child(2)'), angle: PROJECTS_ANGLE, width: CLUSTER_PANEL_WIDTH },
+      { el: document.querySelector('#projects .project-plate:nth-child(3)'), angle: PROJECTS_ANGLE + CLUSTER_SPREAD, width: CLUSTER_PANEL_WIDTH },
+      { el: document.querySelector('#contact .plate'), angle: CONTACT_ANGLE, width: PANEL_WIDTH },
+    ].filter((t) => t.el);
+
+    if (!targets.length) return null;
+
+    const mountedObjects = targets.map((t) => {
+      const el = t.el;
+      el.style.width = t.width + 'px';
+      // CSS3DRenderer drives `transform` every frame — a CSS transition on
+      // transform would fight it, so only opacity gets to transition here.
+      el.style.transition = 'opacity 0.25s ease';
+      el.style.opacity = '0';
+
+      const obj = new CSS3DObject(el);
+      obj.position.set(
+        MOUNT_RADIUS * Math.sin(t.angle),
+        0,
+        MOUNT_RADIUS * Math.cos(t.angle)
+      );
+      obj.rotation.y = t.angle;
+      obj.scale.set(SCALE, SCALE, SCALE);
+      cylinderGroup.add(obj);
+
+      return { el, angle: t.angle };
+    });
+
+    return { cssRenderer, mountedObjects };
+  } catch (err) {
+    console.error('[PDA] Carousel mount failed, falling back to the flat reveal —', err);
+    return null;
+  }
 }
 
 /* ==========================================================================
-   2. Plate reveal on scroll
+   2. Plate reveal on scroll (fallback for mobile / reduced motion / no WebGL)
    ========================================================================== */
 
 function initPlateReveal() {
-  // project-plates are handled separately by initProjectCarousel — they're
-  // scroll-scrubbed extensions of the hologram, not a one-time reveal.
-  const plates = document.querySelectorAll('.plate:not(.project-plate)');
+  const plates = document.querySelectorAll('.plate');
   if (!('IntersectionObserver' in window)) {
     plates.forEach((p) => {
       p.classList.add('in-view');
@@ -470,103 +647,6 @@ function initPlateReveal() {
     { threshold: 0.18, rootMargin: '0px 0px -8% 0px' }
   );
   plates.forEach((p) => observer.observe(p));
-}
-
-/* ==========================================================================
-   2b. Project panels — scroll-scrubbed extensions of the hologram
-   ========================================================================== */
-
-// Per-panel pose at fully hidden (progress 0, receded behind the hull) and
-// fully shown (progress 1, resting tangent to it like a physical extension —
-// not flattened into a plain grid). Angled toward the same side the hull
-// shader clears a window in (see PROJECT_PANEL_ANGLES).
-const PROJECT_PANEL_POSES = [
-  { hidden: { x: 230, y: 26, z: -190, rotY: -60, rotX: 0, scale: 0.55 },
-    shown:  { x: 128, y: 4,  z: -34,  rotY: -26, rotX: 0, scale: 0.92 } },
-  { hidden: { x: 0,   y: 30, z: -210, rotY: 0,   rotX: 22, scale: 0.55 },
-    shown:  { x: 0,   y: 0,  z: -16,  rotY: 0,   rotX: 0,  scale: 0.97 } },
-  { hidden: { x: -230, y: 26, z: -190, rotY: 60, rotX: 0, scale: 0.55 },
-    shown:  { x: -128, y: 4,  z: -34,  rotY: 26, rotX: 0, scale: 0.92 } },
-];
-
-// Each panel reveals across its own window of the section's scroll progress
-// (0-1), staggered so they arrive one after another rather than at once.
-const PROJECT_REVEAL_WINDOWS = [
-  [0.05, 0.5],
-  [0.2, 0.65],
-  [0.35, 0.8],
-];
-
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
-
-function initProjectCarousel() {
-  const section = document.getElementById('projects');
-  const panels = document.querySelectorAll('.plate-grid .project-plate');
-  if (!section || !panels.length) return;
-
-  function applyPose(el, pose, progress) {
-    const x = lerp(pose.hidden.x, pose.shown.x, progress);
-    const y = lerp(pose.hidden.y, pose.shown.y, progress);
-    const z = lerp(pose.hidden.z, pose.shown.z, progress);
-    const rotY = lerp(pose.hidden.rotY, pose.shown.rotY, progress);
-    const rotX = lerp(pose.hidden.rotX, pose.shown.rotX, progress);
-    const scale = lerp(pose.hidden.scale, pose.shown.scale, progress);
-    el.style.opacity = String(progress);
-    el.style.transform =
-      `perspective(1500px) translateX(${x}px) translateY(${y}px) translateZ(${z}px) ` +
-      `rotateY(${rotY}deg) rotateX(${rotX}deg) scale(${scale})`;
-  }
-
-  // Below the desktop breakpoint, plates stack in a plain single column —
-  // the angled hologram-extension pose is designed for the 3-column layout
-  // and would just skew a full-width mobile card sideways.
-  if (window.innerWidth < 761) {
-    panels.forEach((el) => {
-      el.style.opacity = '1';
-      el.style.transform = 'none';
-    });
-    projectRevealProgress = [1, 1, 1];
-    return;
-  }
-
-  if (prefersReducedMotion) {
-    panels.forEach((el, i) => applyPose(el, PROJECT_PANEL_POSES[i], 1));
-    projectRevealProgress = [1, 1, 1];
-    return;
-  }
-
-  let ticking = false;
-
-  function update() {
-    ticking = false;
-    const rect = section.getBoundingClientRect();
-    const vh = window.innerHeight;
-    const startY = vh * 0.85;
-    const endY = vh * 0.1;
-    const sectionProgress = Math.min(1, Math.max(0, (startY - rect.top) / (startY - endY)));
-
-    panels.forEach((el, i) => {
-      const [winStart, winEnd] = PROJECT_REVEAL_WINDOWS[i];
-      const raw = (sectionProgress - winStart) / (winEnd - winStart);
-      const progress = Math.min(1, Math.max(0, raw));
-      // smoothstep easing, nicer than linear for a physical "settling" feel
-      const eased = progress * progress * (3 - 2 * progress);
-      applyPose(el, PROJECT_PANEL_POSES[i], eased);
-      projectRevealProgress[i] = eased;
-    });
-  }
-
-  function onScroll() {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(update);
-  }
-
-  window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', onScroll);
-  update();
 }
 
 /* ==========================================================================
@@ -615,8 +695,6 @@ function initNav() {
    Init
    ========================================================================== */
 
-initPlateReveal();
-initProjectCarousel();
 initNav();
 
 if (supportsWebGL()) {
@@ -624,4 +702,5 @@ if (supportsWebGL()) {
 } else {
   document.body.classList.add('no-motion');
   console.warn('[PDA] WebGL is not available in this browser — showing the static gradient fallback.');
+  initPlateReveal();
 }
