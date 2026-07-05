@@ -357,6 +357,12 @@ main { position: static; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* project-plates are never governed by the .in-front class (they're
+     driven by initProjectCarousel instead, which only ever touches opacity
+     and transform) — pin them in front of the canvas unconditionally, on
+     every screen size, or they'd default to the base .plate z-index and
+     sit behind it, invisible, regardless of their opacity. */
+  z-index: var(--z-plate-shown);
 }
 
 .plate-hook {
@@ -402,90 +408,38 @@ main { position: static; }
 .plate-pending .plate-tag { color: var(--ink-faint); }
 .plate-pending .plate-body { color: var(--ink-faint); }
 
-/* on wide screens, project plates behave like a real carousel around the
-   cylinder: fully invisible while on the "hidden" side of the arc (computed
-   from a circle around the cylinder's axis: x = R sin(theta), depth =
-   R (cos(theta) - 1)), fading into view once you've scrolled to this
-   section, then looping forever — swinging out from behind the cylinder,
-   resting in view long enough to read, then swinging back and repeating.
-   Never fully settling, by design. */
+/* On wide screens, project plates are positioned and posed almost entirely
+   by js/main.js's initProjectCarousel — it sets opacity/transform inline on
+   every scroll event (and on resize), scrubbing each panel from hidden
+   (behind the hologram) to resting tangent to it, like a physical extension
+   of the hull rather than a flat grid far away from it. The CSS below is
+   just the pre-JS fallback pose (so there's no flash of an unstyled full
+   grid before the first scroll handler runs) plus a short transition that
+   smooths between the throttled per-frame updates. */
 @media (min-width: 761px) {
   .plate-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 300px));
+    justify-content: center;
+    gap: 12px;
+    row-gap: 22px;
   }
 
-  /* perspective() lives inside each card's own transform (not on the
-     grid) so it doesn't create a stacking context on the parent — that
-     would trap the card's z-index locally and hide it behind the canvas.
-     z-index is pinned in front permanently: visibility is carried entirely
-     by opacity in the keyframes below, so there's no need to race a
-     z-index swap against the fade. */
+  /* perspective() lives inside each card's own transform (not on the grid)
+     so it doesn't create a stacking context on the parent — that would trap
+     the card's z-index locally and hide it behind the canvas. */
   .plate-grid .project-plate {
-    transition: none;
-    z-index: var(--z-plate-shown);
+    opacity: 0;
+    transition: transform 0.12s linear, opacity 0.12s linear;
   }
 
   .plate-grid .project-plate:nth-child(1) {
-    opacity: 0;
-    transform: perspective(1500px) translateX(188px) translateY(24px) translateZ(-132px) rotateY(-55deg) scale(0.65);
+    transform: perspective(1500px) translateX(230px) translateY(26px) translateZ(-190px) rotateY(-60deg) scale(0.55);
   }
   .plate-grid .project-plate:nth-child(2) {
-    opacity: 0;
-    transform: perspective(1500px) translateY(28px) translateZ(-180px) rotateX(20deg) scale(0.68);
+    transform: perspective(1500px) translateY(30px) translateZ(-210px) rotateX(22deg) scale(0.55);
   }
   .plate-grid .project-plate:nth-child(3) {
-    opacity: 0;
-    transform: perspective(1500px) translateX(-188px) translateY(24px) translateZ(-132px) rotateY(55deg) scale(0.65);
-  }
-
-  .plate-grid .project-plate.in-view:nth-child(1) {
-    animation: orbit-loop-left 10s ease-in-out infinite;
-  }
-  .plate-grid .project-plate.in-view:nth-child(2) {
-    animation: orbit-loop-center 10s ease-in-out infinite;
-    animation-delay: 0.3s;
-  }
-  .plate-grid .project-plate.in-view:nth-child(3) {
-    animation: orbit-loop-right 10s ease-in-out infinite;
-    animation-delay: 0.6s;
-  }
-
-  @keyframes orbit-loop-left {
-    0%, 100% { opacity: 0; transform: perspective(1500px) translateX(188px) translateY(24px) translateZ(-132px) rotateY(-55deg) scale(0.65); }
-    10%  { opacity: 1; transform: perspective(1500px) translateX(115px) translateY(14px) translateZ(-36px) rotateY(-27.5deg) scale(0.82); }
-    22%  { transform: perspective(1500px) translateX(36px) translateY(5px) translateZ(-3px) rotateY(-8deg) scale(0.95); }
-    30%, 70% { opacity: 1; transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) scale(1); }
-    78% { transform: perspective(1500px) translateX(36px) translateY(5px) translateZ(-3px) rotateY(-8deg) scale(0.95); }
-    90% { opacity: 1; transform: perspective(1500px) translateX(115px) translateY(14px) translateZ(-36px) rotateY(-27.5deg) scale(0.82); }
-    96% { opacity: 0; }
-  }
-
-  @keyframes orbit-loop-right {
-    0%, 100% { opacity: 0; transform: perspective(1500px) translateX(-188px) translateY(24px) translateZ(-132px) rotateY(55deg) scale(0.65); }
-    10%  { opacity: 1; transform: perspective(1500px) translateX(-115px) translateY(14px) translateZ(-36px) rotateY(27.5deg) scale(0.82); }
-    22%  { transform: perspective(1500px) translateX(-36px) translateY(5px) translateZ(-3px) rotateY(8deg) scale(0.95); }
-    30%, 70% { opacity: 1; transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) scale(1); }
-    78% { transform: perspective(1500px) translateX(-36px) translateY(5px) translateZ(-3px) rotateY(8deg) scale(0.95); }
-    90% { opacity: 1; transform: perspective(1500px) translateX(-115px) translateY(14px) translateZ(-36px) rotateY(27.5deg) scale(0.82); }
-    96% { opacity: 0; }
-  }
-
-  @keyframes orbit-loop-center {
-    0%, 100% { opacity: 0; transform: perspective(1500px) translateY(28px) translateZ(-180px) rotateX(20deg) scale(0.68); }
-    12% { opacity: 1; transform: perspective(1500px) translateY(10px) translateZ(-60px) rotateX(8deg) scale(0.88); }
-    30%, 70% { opacity: 1; transform: perspective(1500px) translateY(0) translateZ(0) rotateX(0deg) scale(1); }
-    88% { transform: perspective(1500px) translateY(10px) translateZ(-60px) rotateX(8deg) scale(0.88); }
-    96% { opacity: 0; }
-  }
-}
-
-/* perpetual motion is disabled for reduced-motion users — settle permanently
-   in the readable resting pose instead of looping forever */
-@media (min-width: 761px) and (prefers-reduced-motion: reduce) {
-  .plate-grid .project-plate.in-view {
-    animation: none;
-    opacity: 1;
-    transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) rotateX(0deg) scale(1);
+    transform: perspective(1500px) translateX(-230px) translateY(26px) translateZ(-190px) rotateY(60deg) scale(0.55);
   }
 }
 

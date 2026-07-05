@@ -6,6 +6,16 @@
 
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// Shared between the WebGL hologram and the DOM project panels: how far
+// revealed each of the 3 panels currently is (0 = hidden behind the hull,
+// 1 = fully out as an extension of it). The hull shader reads this every
+// frame to fade the hex pattern in behind whichever panel is showing.
+let projectRevealProgress = [0, 0, 0];
+// Angle (radians, relative to straight-on-camera) each panel sits at around
+// the hull's circumference — shared source of truth for the shader's clear
+// zones and the panels' own CSS angle so the two line up visually.
+const PROJECT_PANEL_ANGLES = [-0.5, 0, 0.5];
+
 function supportsWebGL() {
   try {
     const canvas = document.createElement('canvas');
@@ -88,6 +98,7 @@ async function initCylinderBackdrop() {
   );
   camera.position.set(0.9, 0.6, 7.2);
   camera.lookAt(0, 0.1, 0);
+  const cameraFrontAngle = Math.atan2(camera.position.z, camera.position.x);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -158,6 +169,10 @@ async function initCylinderBackdrop() {
   const hullUniforms = {
     uColor: { value: new THREE.Color(0x2f8ce6) },
     uColorBright: { value: new THREE.Color(0xbfe6ff) },
+    uFrontAngle: { value: cameraFrontAngle },
+    uClearAngles: { value: new THREE.Vector3(...PROJECT_PANEL_ANGLES) },
+    uClearAmounts: { value: new THREE.Vector3(0, 0, 0) },
+    uClearWidth: { value: 0.45 },
   };
   const bodyGeo = new THREE.CylinderGeometry(CYL_RADIUS, CYL_RADIUS, CYL_HEIGHT, radialSegments, 1, true);
   const bodyMat = new THREE.ShaderMaterial({
@@ -169,20 +184,27 @@ async function initCylinderBackdrop() {
       varying vec2 vUv;
       varying vec3 vNormal;
       varying vec3 vViewDir;
+      varying vec3 vWorldPos;
       void main() {
         vUv = uv;
         vNormal = normalize(normalMatrix * normal);
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         vViewDir = normalize(-mvPosition.xyz);
+        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
         gl_Position = projectionMatrix * mvPosition;
       }
     `,
     fragmentShader: `
       uniform vec3 uColor;
       uniform vec3 uColorBright;
+      uniform float uFrontAngle;
+      uniform vec3 uClearAngles;
+      uniform vec3 uClearAmounts;
+      uniform float uClearWidth;
       varying vec2 vUv;
       varying vec3 vNormal;
       varying vec3 vViewDir;
+      varying vec3 vWorldPos;
 
       // hex-cell edge distance (0 at cell center, 0.5 at the shared border)
       // plus a per-cell hash, so the whole surface tiles edge-to-edge with
@@ -202,6 +224,11 @@ async function initCylinderBackdrop() {
         return vec2(edge, cellRand);
       }
 
+      float angleDiff(float a, float b) {
+        float d = mod(a - b + 3.14159265, 6.28318531) - 3.14159265;
+        return abs(d);
+      }
+
       void main() {
         vec3 normal = normalize(vNormal);
         if (!gl_FrontFacing) normal = -normal;
@@ -212,6 +239,15 @@ async function initCylinderBackdrop() {
         float panelShade = (hex.y - 0.5) * 0.1;
 
         float alpha = clamp(0.1 + panelShade + fresnel * 0.3 + hexBorder * 0.1, 0.0, 1.0);
+
+        // fade the hologram surface where a panel currently sits, so its
+        // content reads clearly instead of competing with the hex texture
+        float relAngle = atan(vWorldPos.z, vWorldPos.x) - uFrontAngle;
+        float clear = 0.0;
+        clear = max(clear, smoothstep(uClearWidth, 0.0, angleDiff(relAngle, uClearAngles.x)) * uClearAmounts.x);
+        clear = max(clear, smoothstep(uClearWidth, 0.0, angleDiff(relAngle, uClearAngles.y)) * uClearAmounts.y);
+        clear = max(clear, smoothstep(uClearWidth, 0.0, angleDiff(relAngle, uClearAngles.z)) * uClearAmounts.z);
+        alpha *= mix(1.0, 0.18, clear);
 
         vec3 color = mix(uColor, uColorBright, clamp(fresnel * 0.9, 0.0, 1.0));
         gl_FragColor = vec4(color, alpha);
@@ -357,6 +393,7 @@ async function initCylinderBackdrop() {
 
   if (prefersReducedMotion) {
     cylinderGroup.rotation.y = 0.6;
+    hullUniforms.uClearAmounts.value.set(1, 1, 1);
     renderNow();
     console.log('[PDA] Reduced motion is on — cylinder is static.');
     return;
@@ -381,6 +418,11 @@ async function initCylinderBackdrop() {
     ambientAngle += 0.0016;
     cylinderGroup.rotation.y = ambientAngle + scrollAngle;
     particles.rotation.y += 0.00035;
+    hullUniforms.uClearAmounts.value.set(
+      projectRevealProgress[0],
+      projectRevealProgress[1],
+      projectRevealProgress[2]
+    );
 
     renderNow();
   }
@@ -402,7 +444,9 @@ async function initCylinderBackdrop() {
    ========================================================================== */
 
 function initPlateReveal() {
-  const plates = document.querySelectorAll('.plate');
+  // project-plates are handled separately by initProjectCarousel — they're
+  // scroll-scrubbed extensions of the hologram, not a one-time reveal.
+  const plates = document.querySelectorAll('.plate:not(.project-plate)');
   if (!('IntersectionObserver' in window)) {
     plates.forEach((p) => {
       p.classList.add('in-view');
@@ -426,6 +470,103 @@ function initPlateReveal() {
     { threshold: 0.18, rootMargin: '0px 0px -8% 0px' }
   );
   plates.forEach((p) => observer.observe(p));
+}
+
+/* ==========================================================================
+   2b. Project panels — scroll-scrubbed extensions of the hologram
+   ========================================================================== */
+
+// Per-panel pose at fully hidden (progress 0, receded behind the hull) and
+// fully shown (progress 1, resting tangent to it like a physical extension —
+// not flattened into a plain grid). Angled toward the same side the hull
+// shader clears a window in (see PROJECT_PANEL_ANGLES).
+const PROJECT_PANEL_POSES = [
+  { hidden: { x: 230, y: 26, z: -190, rotY: -60, rotX: 0, scale: 0.55 },
+    shown:  { x: 128, y: 4,  z: -34,  rotY: -26, rotX: 0, scale: 0.92 } },
+  { hidden: { x: 0,   y: 30, z: -210, rotY: 0,   rotX: 22, scale: 0.55 },
+    shown:  { x: 0,   y: 0,  z: -16,  rotY: 0,   rotX: 0,  scale: 0.97 } },
+  { hidden: { x: -230, y: 26, z: -190, rotY: 60, rotX: 0, scale: 0.55 },
+    shown:  { x: -128, y: 4,  z: -34,  rotY: 26, rotX: 0, scale: 0.92 } },
+];
+
+// Each panel reveals across its own window of the section's scroll progress
+// (0-1), staggered so they arrive one after another rather than at once.
+const PROJECT_REVEAL_WINDOWS = [
+  [0.05, 0.5],
+  [0.2, 0.65],
+  [0.35, 0.8],
+];
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function initProjectCarousel() {
+  const section = document.getElementById('projects');
+  const panels = document.querySelectorAll('.plate-grid .project-plate');
+  if (!section || !panels.length) return;
+
+  function applyPose(el, pose, progress) {
+    const x = lerp(pose.hidden.x, pose.shown.x, progress);
+    const y = lerp(pose.hidden.y, pose.shown.y, progress);
+    const z = lerp(pose.hidden.z, pose.shown.z, progress);
+    const rotY = lerp(pose.hidden.rotY, pose.shown.rotY, progress);
+    const rotX = lerp(pose.hidden.rotX, pose.shown.rotX, progress);
+    const scale = lerp(pose.hidden.scale, pose.shown.scale, progress);
+    el.style.opacity = String(progress);
+    el.style.transform =
+      `perspective(1500px) translateX(${x}px) translateY(${y}px) translateZ(${z}px) ` +
+      `rotateY(${rotY}deg) rotateX(${rotX}deg) scale(${scale})`;
+  }
+
+  // Below the desktop breakpoint, plates stack in a plain single column —
+  // the angled hologram-extension pose is designed for the 3-column layout
+  // and would just skew a full-width mobile card sideways.
+  if (window.innerWidth < 761) {
+    panels.forEach((el) => {
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+    });
+    projectRevealProgress = [1, 1, 1];
+    return;
+  }
+
+  if (prefersReducedMotion) {
+    panels.forEach((el, i) => applyPose(el, PROJECT_PANEL_POSES[i], 1));
+    projectRevealProgress = [1, 1, 1];
+    return;
+  }
+
+  let ticking = false;
+
+  function update() {
+    ticking = false;
+    const rect = section.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const startY = vh * 0.85;
+    const endY = vh * 0.1;
+    const sectionProgress = Math.min(1, Math.max(0, (startY - rect.top) / (startY - endY)));
+
+    panels.forEach((el, i) => {
+      const [winStart, winEnd] = PROJECT_REVEAL_WINDOWS[i];
+      const raw = (sectionProgress - winStart) / (winEnd - winStart);
+      const progress = Math.min(1, Math.max(0, raw));
+      // smoothstep easing, nicer than linear for a physical "settling" feel
+      const eased = progress * progress * (3 - 2 * progress);
+      applyPose(el, PROJECT_PANEL_POSES[i], eased);
+      projectRevealProgress[i] = eased;
+    });
+  }
+
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(update);
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  update();
 }
 
 /* ==========================================================================
@@ -475,6 +616,7 @@ function initNav() {
    ========================================================================== */
 
 initPlateReveal();
+initProjectCarousel();
 initNav();
 
 if (supportsWebGL()) {
