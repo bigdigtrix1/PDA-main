@@ -24,20 +24,52 @@ async function initCylinderBackdrop() {
   const container = document.getElementById('bg-canvas-container');
   if (!container) return;
 
-  let THREE;
+  const specifiers = {
+    three: 'three',
+    composer: 'three/addons/postprocessing/EffectComposer.js',
+    renderPass: 'three/addons/postprocessing/RenderPass.js',
+    bloomPass: 'three/addons/postprocessing/UnrealBloomPass.js',
+    shaderPass: 'three/addons/postprocessing/ShaderPass.js',
+    outputPass: 'three/addons/postprocessing/OutputPass.js',
+  };
+  const fallbackBase = 'https://cdn.jsdelivr.net/npm/three@0.185.1';
+  const fallbackSpecifiers = {
+    three: `${fallbackBase}/build/three.module.js`,
+    composer: `${fallbackBase}/examples/jsm/postprocessing/EffectComposer.js`,
+    renderPass: `${fallbackBase}/examples/jsm/postprocessing/RenderPass.js`,
+    bloomPass: `${fallbackBase}/examples/jsm/postprocessing/UnrealBloomPass.js`,
+    shaderPass: `${fallbackBase}/examples/jsm/postprocessing/ShaderPass.js`,
+    outputPass: `${fallbackBase}/examples/jsm/postprocessing/OutputPass.js`,
+  };
+
+  let THREE, EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, OutputPass;
   try {
-    THREE = await import('three');
+    [THREE, { EffectComposer }, { RenderPass }, { UnrealBloomPass }, { ShaderPass }, { OutputPass }] = await Promise.all([
+      import(specifiers.three),
+      import(specifiers.composer),
+      import(specifiers.renderPass),
+      import(specifiers.bloomPass),
+      import(specifiers.shaderPass),
+      import(specifiers.outputPass),
+    ]);
   } catch (err) {
-    console.error('[PDA] three.js failed to load from primary CDN, retrying with a fallback…', err);
+    console.error('[PDA] three.js (or its postprocessing addons) failed to load from the primary CDN, retrying with a fallback…', err);
     try {
-      THREE = await import('https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js');
+      [THREE, { EffectComposer }, { RenderPass }, { UnrealBloomPass }, { ShaderPass }, { OutputPass }] = await Promise.all([
+        import(fallbackSpecifiers.three),
+        import(fallbackSpecifiers.composer),
+        import(fallbackSpecifiers.renderPass),
+        import(fallbackSpecifiers.bloomPass),
+        import(fallbackSpecifiers.shaderPass),
+        import(fallbackSpecifiers.outputPass),
+      ]);
     } catch (err2) {
       console.error('[PDA] three.js failed to load entirely — showing the static gradient fallback instead.', err2);
       document.body.classList.add('no-webgl');
       return;
     }
   }
-  console.log('[PDA] three.js loaded — building the cylinder scene.');
+  console.log('[PDA] three.js loaded — building the holographic cylinder scene.');
 
   const isSmall = window.innerWidth < 700;
   const radialSegments = isSmall ? 40 : 72;
@@ -60,53 +92,135 @@ async function initCylinderBackdrop() {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
   container.appendChild(renderer.domElement);
 
+  // -- bloom post-processing --
+  // Selective bloom, three.js's own documented pattern: render the whole
+  // scene once into `bloomComposer` (bright pixels only survive the
+  // threshold + blur), capture that as a texture, then render the scene
+  // again "for real" and additively mix the bloom texture on top. The final
+  // mix shader explicitly carries over the base pass's alpha channel, so the
+  // canvas stays transparent wherever the base render was — bloom never
+  // opacifies the page background behind the cylinder.
+  const renderScene = new RenderPass(scene, camera);
+
+  const bloomRes = new THREE.Vector2(window.innerWidth, window.innerHeight);
+  const bloomPass = new UnrealBloomPass(bloomRes, isSmall ? 0.28 : 0.4, 0.4, 0.72);
+
+  const bloomComposer = new EffectComposer(renderer);
+  bloomComposer.renderToScreen = false;
+  bloomComposer.addPass(renderScene);
+  bloomComposer.addPass(bloomPass);
+
+  const mixPass = new ShaderPass(
+    new THREE.ShaderMaterial({
+      uniforms: {
+        baseTexture: { value: null },
+        bloomTexture: { value: bloomComposer.renderTarget2.texture },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D baseTexture;
+        uniform sampler2D bloomTexture;
+        varying vec2 vUv;
+        void main() {
+          vec4 base = texture2D(baseTexture, vUv);
+          vec4 bloom = texture2D(bloomTexture, vUv);
+          gl_FragColor = vec4(base.rgb + bloom.rgb, base.a);
+        }
+      `,
+    }),
+    'baseTexture'
+  );
+  mixPass.needsSwap = true;
+
+  const finalComposer = new EffectComposer(renderer);
+  finalComposer.addPass(renderScene);
+  finalComposer.addPass(mixPass);
+  finalComposer.addPass(new OutputPass());
+
   function renderNow() {
-    renderer.render(scene, camera);
+    bloomComposer.render();
+    finalComposer.render();
   }
 
-  // -- the hull --
+  // -- the hull: a translucent, hex-etched holographic membrane --
   const cylinderGroup = new THREE.Group();
 
+  const hullUniforms = {
+    uColor: { value: new THREE.Color(0x2f8ce6) },
+    uColorBright: { value: new THREE.Color(0xbfe6ff) },
+  };
   const bodyGeo = new THREE.CylinderGeometry(CYL_RADIUS, CYL_RADIUS, CYL_HEIGHT, radialSegments, 1, true);
-  const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0x1c2128,
-    metalness: 0.55,
-    roughness: 0.42,
-    side: THREE.DoubleSide,
+  const bodyMat = new THREE.ShaderMaterial({
+    uniforms: hullUniforms,
+    transparent: true,
+    side: THREE.FrontSide,
+    depthWrite: false,
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec3 vNormal;
+      varying vec3 vViewDir;
+      void main() {
+        vUv = uv;
+        vNormal = normalize(normalMatrix * normal);
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        vViewDir = normalize(-mvPosition.xyz);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uColor;
+      uniform vec3 uColorBright;
+      varying vec2 vUv;
+      varying vec3 vNormal;
+      varying vec3 vViewDir;
+
+      // hex-cell edge distance (0 at cell center, 0.5 at the shared border)
+      // plus a per-cell hash, so the whole surface tiles edge-to-edge with
+      // no gaps — every pixel belongs to exactly one hexagon
+      vec2 hexInfo(vec2 p) {
+        vec2 r = vec2(1.0, 1.7320508);
+        vec2 h = r * 0.5;
+        vec2 a = mod(p, r) - h;
+        vec2 ia = p - a;
+        vec2 b = mod(p - h, r) - h;
+        vec2 ib = p - b - h;
+        bool useA = dot(a, a) < dot(b, b);
+        vec2 gv = useA ? a : b;
+        vec2 id = useA ? ia : ib;
+        float edge = max(abs(gv.x) * 0.8660254 + abs(gv.y) * 0.5, abs(gv.y));
+        float cellRand = fract(sin(dot(id, vec2(12.9898, 78.233))) * 43758.5453);
+        return vec2(edge, cellRand);
+      }
+
+      void main() {
+        vec3 normal = normalize(vNormal);
+        if (!gl_FrontFacing) normal = -normal;
+        float fresnel = pow(1.0 - clamp(dot(normal, normalize(vViewDir)), 0.0, 1.0), 4.0);
+
+        vec2 hex = hexInfo(vec2(vUv.x * 40.0, vUv.y * 24.0));
+        float hexBorder = smoothstep(0.44, 0.5, hex.x);
+        float panelShade = (hex.y - 0.5) * 0.1;
+
+        float alpha = clamp(0.1 + panelShade + fresnel * 0.3 + hexBorder * 0.1, 0.0, 1.0);
+
+        vec3 color = mix(uColor, uColorBright, clamp(fresnel * 0.9, 0.0, 1.0));
+        gl_FragColor = vec4(color, alpha);
+      }
+    `,
   });
   cylinderGroup.add(new THREE.Mesh(bodyGeo, bodyMat));
 
-  // faint machined panel lines
-  const seamGeo = new THREE.CylinderGeometry(CYL_RADIUS + 0.006, CYL_RADIUS + 0.006, CYL_HEIGHT, radialSegments / 2, 1, true);
-  const seamMat = new THREE.MeshBasicMaterial({ color: 0x4a5563, wireframe: true, transparent: true, opacity: 0.22 });
-  cylinderGroup.add(new THREE.Mesh(seamGeo, seamMat));
-
-  // a dense field of thin glowing rings running the length of the hull
-  const thinRingCount = isSmall ? 9 : 16;
-  for (let i = 0; i <= thinRingCount; i++) {
-    const y = -CYL_HEIGHT / 2 + (i / thinRingCount) * CYL_HEIGHT;
-    const ringGeo = new THREE.TorusGeometry(CYL_RADIUS + 0.01, 0.006, 6, radialSegments);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x3d9eff, transparent: true, opacity: 0.22 });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = y;
-    cylinderGroup.add(ring);
-  }
-
-  // brighter divider rings at the section boundaries (roughly 1/3 and 2/3 up)
-  [1 / 3, 2 / 3].forEach((t) => {
-    const y = -CYL_HEIGHT / 2 + t * CYL_HEIGHT;
-    const ringGeo = new THREE.TorusGeometry(CYL_RADIUS + 0.015, 0.02, 8, radialSegments);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x5fb8ff, transparent: true, opacity: 0.85 });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = y;
-    cylinderGroup.add(ring);
-  });
-
-  // bright cap rings, top and bottom edges
+  // bright cap rings, top and bottom — the crisp inner edge of each halo
   [-1, 1].forEach((sign) => {
     const ringGeo = new THREE.TorusGeometry(CYL_RADIUS + 0.02, 0.035, 10, radialSegments);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x7cc4ff, opacity: 1 });
@@ -116,32 +230,93 @@ async function initCylinderBackdrop() {
     cylinderGroup.add(ring);
   });
 
-  // vertical light strips around the circumference
-  const stripCount = isSmall ? 5 : 8;
-  for (let i = 0; i < stripCount; i++) {
-    const angle = (i / stripCount) * Math.PI * 2;
-    const stripGeo = new THREE.BoxGeometry(0.035, CYL_HEIGHT * 0.86, 0.035);
-    const stripMat = new THREE.MeshBasicMaterial({ color: 0x4fadff, transparent: true, opacity: 0.45 });
-    const strip = new THREE.Mesh(stripGeo, stripMat);
-    strip.position.set(Math.cos(angle) * (CYL_RADIUS + 0.02), 0, Math.sin(angle) * (CYL_RADIUS + 0.02));
-    cylinderGroup.add(strip);
+  // -- top/bottom halo discs: flat, circuit-etched rings of light the hull
+  // projects from/into — drawn once onto a canvas texture, since that detail
+  // would be far too expensive as real geometry
+  function buildHaloTexture() {
+    const size = 1024;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const maxR = size / 2;
+    ctx.translate(maxR, maxR);
+
+    // concentric circuit bands
+    [
+      [0.98, 2, 'rgba(140,200,255,0.35)'],
+      [0.9, 1, 'rgba(140,200,255,0.22)'],
+      [0.78, 5, 'rgba(190,225,255,0.55)'],
+      [0.7, 1, 'rgba(140,200,255,0.2)'],
+      [0.5, 10, 'rgba(210,240,255,0.85)'],
+      [0.34, 2, 'rgba(140,200,255,0.3)'],
+    ].forEach(([f, w, color]) => {
+      ctx.beginPath();
+      ctx.arc(0, 0, maxR * f, 0, Math.PI * 2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = w;
+      ctx.stroke();
+    });
+
+    // radial dial ticks
+    const tickCount = 96;
+    for (let i = 0; i < tickCount; i++) {
+      const angle = (i / tickCount) * Math.PI * 2;
+      const long = i % 8 === 0;
+      const inner = maxR * (long ? 0.55 : 0.62);
+      const outer = maxR * (long ? 0.68 : 0.665);
+      ctx.save();
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.moveTo(inner, 0);
+      ctx.lineTo(outer, 0);
+      ctx.strokeStyle = long ? 'rgba(220,245,255,0.8)' : 'rgba(150,205,255,0.4)';
+      ctx.lineWidth = long ? 2.5 : 1.2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // scattered circuit-block detail in the outer band
+    for (let i = 0; i < 140; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = maxR * (0.8 + Math.random() * 0.17);
+      const w = 4 + Math.random() * 18;
+      const h = 2 + Math.random() * 4;
+      ctx.save();
+      ctx.translate(Math.cos(angle) * r, Math.sin(angle) * r);
+      ctx.rotate(angle + Math.PI / 2);
+      ctx.fillStyle = `rgba(170,220,255,${0.15 + Math.random() * 0.35})`;
+      ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.restore();
+    }
+
+    // soft bright core fading outward
+    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, maxR * 0.55);
+    glow.addColorStop(0, 'rgba(200,235,255,0.5)');
+    glow.addColorStop(0.6, 'rgba(120,190,255,0.12)');
+    glow.addColorStop(1, 'rgba(120,190,255,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, maxR * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
   }
 
-  // glowing base platform
-  const baseY = -CYL_HEIGHT / 2 - 0.35;
-  const baseDiscGeo = new THREE.CylinderGeometry(2.5, 2.65, 0.08, radialSegments, 1, false);
-  const baseDiscMat = new THREE.MeshStandardMaterial({ color: 0x14181e, metalness: 0.5, roughness: 0.5 });
-  const baseDisc = new THREE.Mesh(baseDiscGeo, baseDiscMat);
-  baseDisc.position.y = baseY;
-  cylinderGroup.add(baseDisc);
-
-  [[2.0, 0.008, 0.4], [2.35, 0.022, 0.9], [2.7, 0.008, 0.35]].forEach(([r, tube, opacity]) => {
-    const ringGeo = new THREE.TorusGeometry(r, tube, 8, radialSegments);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x5fb8ff, transparent: true, opacity });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = baseY + 0.045;
-    cylinderGroup.add(ring);
+  const haloTexture = buildHaloTexture();
+  const haloOuterRadius = CYL_RADIUS * 2.7;
+  [-1, 1].forEach((sign) => {
+    const discGeo = new THREE.CircleGeometry(haloOuterRadius, 96);
+    const discMat = new THREE.MeshBasicMaterial({
+      map: haloTexture, transparent: true, opacity: 0.9,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    });
+    const disc = new THREE.Mesh(discGeo, discMat);
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.y = sign * (CYL_HEIGHT / 2);
+    cylinderGroup.add(disc);
   });
 
   scene.add(cylinderGroup);
@@ -170,25 +345,12 @@ async function initCylinderBackdrop() {
   const particles = new THREE.Points(particleGeo, particleMat);
   scene.add(particles);
 
-  // -- lighting: no HDRI, tuned so a dark hull still reads with dimension --
-  scene.add(new THREE.AmbientLight(0x3a4250, 0.55));
-
-  const key = new THREE.DirectionalLight(0xaec7ff, 1.3);
-  key.position.set(4, 5, 6);
-  scene.add(key);
-
-  const rim = new THREE.PointLight(0x4fadff, 3.2, 26, 2);
-  rim.position.set(-4, 1.5, -3);
-  scene.add(rim);
-
-  const fill = new THREE.PointLight(0x7cc4ff, 0.7, 26, 2);
-  fill.position.set(-2, -2, 4);
-  scene.add(fill);
-
   function onResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    bloomComposer.setSize(window.innerWidth, window.innerHeight);
+    finalComposer.setSize(window.innerWidth, window.innerHeight);
     renderNow();
   }
   window.addEventListener('resize', onResize);
@@ -215,9 +377,11 @@ async function initCylinderBackdrop() {
 
   function tick() {
     raf = requestAnimationFrame(tick);
+
     ambientAngle += 0.0016;
     cylinderGroup.rotation.y = ambientAngle + scrollAngle;
     particles.rotation.y += 0.00035;
+
     renderNow();
   }
 

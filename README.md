@@ -1,10 +1,10 @@
 # PDA — site
 
-A single-page, dark-themed site for PDA: fixed nav, a detailed WebGL steel
-cylinder that stays on screen for the entire scroll, and content plates
-that start small and dim behind it, then grow, brighten, and pass in front
-as you scroll — About Me, Current Projects (Vuil, Sens, Orbiteer), Contact.
-A separate, plain Policies page holds the Orbiteer privacy policy.
+A single-page, dark-themed site for PDA: fixed nav, a detailed WebGL
+holographic cylinder that stays on screen for the entire scroll, and content
+plates that start small and dim behind it, then grow, brighten, and pass in
+front as you scroll — About Me, Current Projects (Vuil, Sens, Orbiteer),
+Contact. A separate, plain Policies page holds the Orbiteer privacy policy.
 
 Plain HTML/CSS/JS — no build step, no framework, no bundler.
 
@@ -56,11 +56,29 @@ still appear, it just won't spin — that's intentional.
 ## Notes on how it's built
 
 - The cylinder is rendered with Three.js (loaded via CDN through an import
-  map in `index.html`, pinned to `three@0.185.1` — no install needed).
-- It's built from a dark hull, ~18 thin glowing rings plus brighter rings
-  marking the About/Projects and Projects/Contact boundaries, bright cap
-  rings top and bottom, 8 vertical light strips, a glowing base platform,
-  and a couple hundred drifting ambient particles.
+  map in `index.html`, pinned to `three@0.185.1` — no install needed). The
+  same import map also maps `three/addons/` to Three's postprocessing
+  examples, used for the bloom pass below — still no build step.
+- The hull itself is a single custom shader (not a solid material): fresnel
+  rim-glow, an animated scan-line sweep, an etched data-grid, and a subtle
+  flicker are all computed per-pixel, so it reads as a projected, semi-
+  transparent membrane rather than solid metal.
+- Layered around that: ~24 thin glowing rings (each shimmering on its own
+  phase offset) plus brighter divider rings at the About/Projects and
+  Projects/Contact boundaries, bright cap rings top and bottom with
+  instanced tick-mark gauges around each one, 10 flickering vertical data
+  strips, a moving scan-sweep ring that travels the hull's height on a slow
+  loop, two independently-tumbling "gyroscope" halo rings around the outside,
+  a solid base platform (the one "real" object — the projector the hologram
+  is emitted from) with a faint upward projection-beam cone, and a couple
+  hundred drifting ambient particles.
+- A selective bloom post-processing pass (`EffectComposer` +
+  `UnrealBloomPass`) adds real glow on top of the bright elements. The final
+  composite shader explicitly carries over the base render's alpha channel,
+  so the canvas stays transparent wherever it always was — bloom adds glow,
+  it doesn't opacify the page background or hide the plates behind it.
+- Every several seconds the hull does a brief, subtle "signal instability"
+  glitch — a quick flicker and positional jitter — then settles back down.
 - Rotation = a slow constant ambient spin + an offset driven by scroll
   position, so it's always gently alive and also responds to scrolling.
   It stays visible for the whole page, not just the hero.

@@ -402,21 +402,31 @@ main { position: static; }
 .plate-pending .plate-tag { color: var(--ink-faint); }
 .plate-pending .plate-body { color: var(--ink-faint); }
 
-/* on wide screens, project plates gather toward the middle (where the
-   cylinder is) before fanning out to their grid slots */
+/* on wide screens, project plates emerge from around the cylinder's curve —
+   each one rotates in from the side it wraps past, with a bit of depth, then
+   unrotates flat as it settles into its grid slot */
 @media (min-width: 761px) {
   .plate-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .plate-grid .project-plate:nth-child(1) { transform: translateX(58%) translateY(20px) scale(0.78); }
-  .plate-grid .project-plate:nth-child(2) { transform: translateY(30px) scale(0.75); }
-  .plate-grid .project-plate:nth-child(3) { transform: translateX(-58%) translateY(20px) scale(0.78); }
+  /* perspective() lives inside each card's own transform (not on the
+     grid) so it doesn't create a stacking context on the parent — that
+     would trap the card's z-index locally and hide it behind the canvas */
+  .plate-grid .project-plate:nth-child(1) {
+    transform: perspective(1500px) translateX(70%) translateY(20px) translateZ(-140px) rotateY(-50deg) scale(0.7);
+  }
+  .plate-grid .project-plate:nth-child(2) {
+    transform: perspective(1500px) translateY(28px) translateZ(-180px) rotateX(20deg) scale(0.68);
+  }
+  .plate-grid .project-plate:nth-child(3) {
+    transform: perspective(1500px) translateX(-70%) translateY(20px) translateZ(-140px) rotateY(50deg) scale(0.7);
+  }
 
   .plate-grid .project-plate.in-view:nth-child(1),
   .plate-grid .project-plate.in-view:nth-child(2),
   .plate-grid .project-plate.in-view:nth-child(3) {
-    transform: translateX(0) translateY(0) scale(1);
+    transform: perspective(1500px) translateX(0) translateY(0) translateZ(0) rotateY(0deg) rotateX(0deg) scale(1);
   }
 
   .plate-grid .project-plate:nth-child(1),
