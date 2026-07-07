@@ -9,6 +9,71 @@ const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)
 const isSmallScreen = window.innerWidth < 900;
 const useTrueMount = !prefersReducedMotion && !isSmallScreen;
 
+/* ==========================================================================
+   0. Hologram themes — swapped live from the footer switcher. Each one
+   changes color, the hull's surface pattern, and how the ambient spin and
+   dust feel, so they read as genuinely different moods rather than just a
+   palette swap.
+   ========================================================================== */
+
+const HOLOGRAM_THEMES = [
+  {
+    id: 'cyan',
+    name: 'Cyan',
+    color: 0x2f8ce6,
+    colorBright: 0xbfe6ff,
+    accent: 0x7cc4ff,
+    haloRgb: [140, 200, 255],
+    pattern: 0, // hexagon lattice
+    patternScale: [40, 24],
+    style: 1, // faceted chrome — bold per-cell shading, lightly tinted
+    spinSpeed: 1,
+    particleSpeed: 1,
+    bloomMultiplier: 1,
+    pulseAmount: 0,
+  },
+  {
+    id: 'amber',
+    name: 'Amber',
+    color: 0xcc6a2f,
+    colorBright: 0xffd9a0,
+    accent: 0xffa64d,
+    haloRgb: [255, 180, 110],
+    pattern: 1, // square grid — a blueprint/schematic feel
+    patternScale: [30, 18],
+    style: 0, // translucent hologram membrane
+    spinSpeed: 1.6,
+    particleSpeed: 1.4,
+    bloomMultiplier: 1.15,
+    pulseAmount: 0,
+  },
+  {
+    id: 'violet',
+    name: 'Violet',
+    color: 0x8b3fe6,
+    colorBright: 0xe6c2ff,
+    accent: 0xc48bff,
+    haloRgb: [200, 150, 255],
+    pattern: 2, // diamond lattice — a faceted crystal feel
+    patternScale: [34, 20],
+    style: 0, // translucent hologram membrane
+    spinSpeed: 0.55,
+    particleSpeed: 0.65,
+    bloomMultiplier: 1.08,
+    pulseAmount: 0.14, // slow breathing glow, unique to this theme
+  },
+];
+
+function getInitialTheme() {
+  let stored = null;
+  try {
+    stored = localStorage.getItem('pda-theme');
+  } catch (e) {
+    // localStorage unavailable (private browsing, etc.) — fall through to default
+  }
+  return HOLOGRAM_THEMES.find((t) => t.id === stored) || HOLOGRAM_THEMES[0];
+}
+
 function supportsWebGL() {
   try {
     const canvas = document.createElement('canvas');
@@ -82,6 +147,9 @@ async function initCylinderBackdrop() {
   const CYL_RADIUS = 1.7;
   const CYL_HEIGHT = 6.4;
 
+  const startTime = performance.now();
+  let currentTheme = getInitialTheme();
+
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0x0b0d11, 13, 30);
 
@@ -112,7 +180,8 @@ async function initCylinderBackdrop() {
   const renderScene = new RenderPass(scene, camera);
 
   const bloomRes = new THREE.Vector2(window.innerWidth, window.innerHeight);
-  const bloomPass = new UnrealBloomPass(bloomRes, isSmall ? 0.28 : 0.4, 0.4, 0.72);
+  const baseBloomStrength = isSmall ? 0.28 : 0.4;
+  const bloomPass = new UnrealBloomPass(bloomRes, baseBloomStrength * currentTheme.bloomMultiplier, 0.4, 0.72);
 
   const bloomComposer = new EffectComposer(renderer);
   bloomComposer.renderToScreen = false;
@@ -161,8 +230,8 @@ async function initCylinderBackdrop() {
   const cylinderGroup = new THREE.Group();
 
   const hullUniforms = {
-    uColor: { value: new THREE.Color(0x2f8ce6) },
-    uColorBright: { value: new THREE.Color(0xbfe6ff) },
+    uColor: { value: new THREE.Color(currentTheme.color) },
+    uColorBright: { value: new THREE.Color(currentTheme.colorBright) },
     // Up to 5 "clear zones" (About, 3 project cards, Contact) where the hex
     // pattern fades so a mounted panel reads clearly. Angles are in the
     // hull's own local space (see vAngle below), so a clearing stays
@@ -173,6 +242,18 @@ async function initCylinderBackdrop() {
     uClearAngles: { value: [0, 0, 0, 0, 0] },
     uClearAmounts: { value: [0, 0, 0, 0, 0] },
     uClearWidth: { value: 0.45 },
+    // which theme's surface pattern to draw (0 hex / 1 grid / 2 diamond)
+    // and how densely it tiles — both swapped live by applyTheme()
+    uPatternType: { value: currentTheme.pattern },
+    uPatternScale: { value: new THREE.Vector2(...currentTheme.patternScale) },
+    // how the pattern gets composited into a final color (0 translucent
+    // hologram membrane / 1 bold faceted chrome) — see main() below
+    uStyleType: { value: currentTheme.style },
+    // a slow 0-1 breathing wave, only given visible weight by themes whose
+    // uPulseAmount is nonzero (see HOLOGRAM_THEMES) — 0 for the rest, so
+    // this is inert unless a theme specifically asks for it
+    uPulse: { value: 0 },
+    uPulseAmount: { value: currentTheme.pulseAmount },
   };
   const bodyGeo = new THREE.CylinderGeometry(CYL_RADIUS, CYL_RADIUS, CYL_HEIGHT, radialSegments, 1, true);
   const bodyMat = new THREE.ShaderMaterial({
@@ -184,16 +265,20 @@ async function initCylinderBackdrop() {
       varying vec2 vUv;
       varying vec3 vNormal;
       varying vec3 vViewDir;
-      varying float vAngle;
+      varying vec2 vDir;
       void main() {
         vUv = uv;
         vNormal = normalize(normalMatrix * normal);
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         vViewDir = normalize(-mvPosition.xyz);
-        // local-space angle around the hull's own axis — matches the same
-        // sin/cos convention the carousel mount positions panels with, so
-        // no camera or world-space correction is needed to line them up
-        vAngle = atan(position.x, position.z);
+        // local-space direction around the hull's own axis, interpolated as
+        // a vector (not pre-computed as an angle) — atan() has a branch cut
+        // at +/-PI, so any varying computed as atan() in the vertex shader
+        // gets linearly interpolated straight across that cut on whichever
+        // triangle happens to straddle it, producing garbage in between.
+        // Interpolating the raw direction and taking atan() per-fragment
+        // instead avoids that entirely, since (x,z) has no such cut.
+        vDir = position.xz;
         gl_Position = projectionMatrix * mvPosition;
       }
     `,
@@ -203,10 +288,29 @@ async function initCylinderBackdrop() {
       uniform float uClearAngles[5];
       uniform float uClearAmounts[5];
       uniform float uClearWidth;
+      uniform float uPatternType;
+      uniform vec2 uPatternScale;
+      uniform float uStyleType;
+      uniform float uPulse;
+      uniform float uPulseAmount;
       varying vec2 vUv;
       varying vec3 vNormal;
       varying vec3 vViewDir;
-      varying float vAngle;
+      varying vec2 vDir;
+
+      // Robust 2D->1D hash (Dave Hoskins' "hash without sine" family) — the
+      // classic fract(sin(dot(...))*big number) hash needs sin() of a
+      // large radian argument, which requires reducing that angle mod 2*PI
+      // internally; any tiny imprecision in the input gets hugely amplified
+      // by that reduction, so cells rendered this way came out visibly
+      // grainy/speckled instead of a clean solid shade. This version only
+      // ever multiplies and fracts small, bounded numbers, so it stays
+      // stable regardless of GPU float precision.
+      float cellHash(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return fract((p3.x + p3.y) * p3.z);
+      }
 
       // hex-cell edge distance (0 at cell center, 0.5 at the shared border)
       // plus a per-cell hash, so the whole surface tiles edge-to-edge with
@@ -222,8 +326,30 @@ async function initCylinderBackdrop() {
         vec2 gv = useA ? a : b;
         vec2 id = useA ? ia : ib;
         float edge = max(abs(gv.x) * 0.8660254 + abs(gv.y) * 0.5, abs(gv.y));
-        float cellRand = fract(sin(dot(id, vec2(12.9898, 78.233))) * 43758.5453);
-        return vec2(edge, cellRand);
+        return vec2(edge, cellHash(id));
+      }
+
+      // square-cell equivalent of hexInfo above — same 0..0.5 edge range and
+      // per-cell hash, just a plain grid instead of a honeycomb
+      vec2 gridInfo(vec2 p) {
+        vec2 id = floor(p);
+        vec2 gv = fract(p) - 0.5;
+        float edge = max(abs(gv.x), abs(gv.y));
+        return vec2(edge, cellHash(id));
+      }
+
+      // picks the current theme's surface pattern — a uniform-driven branch
+      // like this costs nothing extra, since every fragment in the draw
+      // takes the same path (the condition never varies per-pixel)
+      vec2 patternInfo(vec2 p) {
+        if (uPatternType < 0.5) {
+          return hexInfo(p);
+        } else if (uPatternType < 1.5) {
+          return gridInfo(p);
+        } else {
+          vec2 pr = vec2(p.x - p.y, p.x + p.y) * 0.7071068;
+          return gridInfo(pr);
+        }
       }
 
       float angleDiff(float a, float b) {
@@ -236,22 +362,41 @@ async function initCylinderBackdrop() {
         if (!gl_FrontFacing) normal = -normal;
         float fresnel = pow(1.0 - clamp(dot(normal, normalize(vViewDir)), 0.0, 1.0), 4.0);
 
-        vec2 hex = hexInfo(vec2(vUv.x * 40.0, vUv.y * 24.0));
+        vec2 hex = patternInfo(vec2(vUv.x * uPatternScale.x, vUv.y * uPatternScale.y));
         float hexBorder = smoothstep(0.44, 0.5, hex.x);
         float panelShade = (hex.y - 0.5) * 0.1;
 
-        float alpha = clamp(0.1 + panelShade + fresnel * 0.3 + hexBorder * 0.1, 0.0, 1.0);
-
         // fade the hologram surface where a mounted panel currently sits,
         // so its content reads clearly instead of competing with the hex
+        float vAngle = atan(vDir.x, vDir.y);
         float clear = 0.0;
         for (int i = 0; i < 5; i++) {
           float d = angleDiff(vAngle, uClearAngles[i]);
           clear = max(clear, smoothstep(uClearWidth, 0.0, d) * uClearAmounts[i]);
         }
-        alpha *= mix(1.0, 0.18, clear);
 
-        vec3 color = mix(uColor, uColorBright, clamp(fresnel * 0.9, 0.0, 1.0));
+        vec3 color;
+        float alpha;
+
+        if (uStyleType > 0.5) {
+          // faceted chrome: each hexagon reads as a different shade of the
+          // *same* color, the same way the other themes get their per-cell
+          // brightness — from alpha (how much of the dark page shows
+          // through), not from mixing the color itself toward white. Color
+          // stays close to uColor throughout; only grazing edges lean
+          // toward the brighter accent, same as the other themes do.
+          color = mix(uColor, uColorBright, fresnel * 0.6);
+          alpha = clamp(0.32 + hex.y * 0.5 + hexBorder * 0.15 + fresnel * 0.25, 0.0, 1.0);
+        } else {
+          alpha = clamp(0.1 + panelShade + fresnel * 0.3 + hexBorder * 0.1, 0.0, 1.0);
+          color = mix(uColor, uColorBright, clamp(fresnel * 0.9, 0.0, 1.0));
+        }
+
+        alpha *= 1.0 + (uPulse - 0.5) * uPulseAmount;
+        alpha *= mix(1.0, 0.18, clear);
+        alpha = clamp(alpha, 0.0, 1.0);
+        color *= 1.0 + (uPulse - 0.5) * uPulseAmount * 0.6;
+
         gl_FragColor = vec4(color, alpha);
       }
     `,
@@ -259,19 +404,26 @@ async function initCylinderBackdrop() {
   cylinderGroup.add(new THREE.Mesh(bodyGeo, bodyMat));
 
   // bright cap rings, top and bottom — the crisp inner edge of each halo
-  [-1, 1].forEach((sign) => {
+  const capRings = [-1, 1].map((sign) => {
     const ringGeo = new THREE.TorusGeometry(CYL_RADIUS + 0.02, 0.035, 10, radialSegments);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x7cc4ff, opacity: 1 });
+    const ringMat = new THREE.MeshBasicMaterial({ color: currentTheme.accent, opacity: 1 });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.rotation.x = Math.PI / 2;
     ring.position.y = sign * (CYL_HEIGHT / 2);
     cylinderGroup.add(ring);
+    return ring;
   });
 
   // -- top/bottom halo discs: flat, circuit-etched rings of light the hull
   // projects from/into — drawn once onto a canvas texture, since that detail
-  // would be far too expensive as real geometry
-  function buildHaloTexture() {
+  // would be far too expensive as real geometry. Colors come from the
+  // theme's [r,g,b] base tone, with two lightened variants derived from it
+  // for the brighter bands/ticks, so a theme switch only needs one number.
+  function lighten(rgb, t) {
+    return rgb.map((v) => Math.round(v + (255 - v) * t));
+  }
+
+  function buildHaloTexture(baseRgb) {
     const size = 1024;
     const canvas = document.createElement('canvas');
     canvas.width = size;
@@ -280,14 +432,19 @@ async function initCylinderBackdrop() {
     const maxR = size / 2;
     ctx.translate(maxR, maxR);
 
+    const dim = baseRgb;
+    const mid = lighten(baseRgb, 0.32);
+    const hot = lighten(baseRgb, 0.65);
+    const rgba = (rgb, a) => `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`;
+
     // concentric circuit bands
     [
-      [0.98, 2, 'rgba(140,200,255,0.35)'],
-      [0.9, 1, 'rgba(140,200,255,0.22)'],
-      [0.78, 5, 'rgba(190,225,255,0.55)'],
-      [0.7, 1, 'rgba(140,200,255,0.2)'],
-      [0.5, 10, 'rgba(210,240,255,0.85)'],
-      [0.34, 2, 'rgba(140,200,255,0.3)'],
+      [0.98, 2, rgba(dim, 0.35)],
+      [0.9, 1, rgba(dim, 0.22)],
+      [0.78, 5, rgba(mid, 0.55)],
+      [0.7, 1, rgba(dim, 0.2)],
+      [0.5, 10, rgba(hot, 0.85)],
+      [0.34, 2, rgba(dim, 0.3)],
     ].forEach(([f, w, color]) => {
       ctx.beginPath();
       ctx.arc(0, 0, maxR * f, 0, Math.PI * 2);
@@ -308,7 +465,7 @@ async function initCylinderBackdrop() {
       ctx.beginPath();
       ctx.moveTo(inner, 0);
       ctx.lineTo(outer, 0);
-      ctx.strokeStyle = long ? 'rgba(220,245,255,0.8)' : 'rgba(150,205,255,0.4)';
+      ctx.strokeStyle = long ? rgba(hot, 0.8) : rgba(mid, 0.4);
       ctx.lineWidth = long ? 2.5 : 1.2;
       ctx.stroke();
       ctx.restore();
@@ -323,16 +480,16 @@ async function initCylinderBackdrop() {
       ctx.save();
       ctx.translate(Math.cos(angle) * r, Math.sin(angle) * r);
       ctx.rotate(angle + Math.PI / 2);
-      ctx.fillStyle = `rgba(170,220,255,${0.15 + Math.random() * 0.35})`;
+      ctx.fillStyle = rgba(mid, 0.15 + Math.random() * 0.35);
       ctx.fillRect(-w / 2, -h / 2, w, h);
       ctx.restore();
     }
 
     // soft bright core fading outward
     const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, maxR * 0.55);
-    glow.addColorStop(0, 'rgba(200,235,255,0.5)');
-    glow.addColorStop(0.6, 'rgba(120,190,255,0.12)');
-    glow.addColorStop(1, 'rgba(120,190,255,0)');
+    glow.addColorStop(0, rgba(hot, 0.5));
+    glow.addColorStop(0.6, rgba(dim, 0.12));
+    glow.addColorStop(1, rgba(dim, 0));
     ctx.fillStyle = glow;
     ctx.beginPath();
     ctx.arc(0, 0, maxR * 0.55, 0, Math.PI * 2);
@@ -343,9 +500,9 @@ async function initCylinderBackdrop() {
     return texture;
   }
 
-  const haloTexture = buildHaloTexture();
+  let haloTexture = buildHaloTexture(currentTheme.haloRgb);
   const haloOuterRadius = CYL_RADIUS * 2.7;
-  [-1, 1].forEach((sign) => {
+  const haloDiscs = [-1, 1].map((sign) => {
     const discGeo = new THREE.CircleGeometry(haloOuterRadius, 96);
     const discMat = new THREE.MeshBasicMaterial({
       map: haloTexture, transparent: true, opacity: 0.9,
@@ -355,6 +512,7 @@ async function initCylinderBackdrop() {
     disc.rotation.x = -Math.PI / 2;
     disc.position.y = sign * (CYL_HEIGHT / 2);
     cylinderGroup.add(disc);
+    return disc;
   });
 
   scene.add(cylinderGroup);
@@ -373,7 +531,7 @@ async function initCylinderBackdrop() {
   const particleGeo = new THREE.BufferGeometry();
   particleGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   const particleMat = new THREE.PointsMaterial({
-    color: 0x7cc4ff,
+    color: currentTheme.accent,
     size: 0.035,
     transparent: true,
     opacity: 0.55,
@@ -382,6 +540,48 @@ async function initCylinderBackdrop() {
   });
   const particles = new THREE.Points(particleGeo, particleMat);
   scene.add(particles);
+
+  // -- theme switching, driven by the swatches in the footer --
+  function applyTheme(themeId) {
+    const theme = HOLOGRAM_THEMES.find((t) => t.id === themeId);
+    if (!theme) return;
+    currentTheme = theme;
+
+    hullUniforms.uColor.value.set(theme.color);
+    hullUniforms.uColorBright.value.set(theme.colorBright);
+    hullUniforms.uPatternType.value = theme.pattern;
+    hullUniforms.uPatternScale.value.set(theme.patternScale[0], theme.patternScale[1]);
+    hullUniforms.uStyleType.value = theme.style;
+    hullUniforms.uPulseAmount.value = theme.pulseAmount;
+
+    capRings.forEach((ring) => ring.material.color.set(theme.accent));
+    particleMat.color.set(theme.accent);
+    bloomPass.strength = baseBloomStrength * theme.bloomMultiplier;
+
+    const oldHaloTexture = haloTexture;
+    haloTexture = buildHaloTexture(theme.haloRgb);
+    haloDiscs.forEach((disc) => {
+      disc.material.map = haloTexture;
+      disc.material.needsUpdate = true;
+    });
+    oldHaloTexture.dispose();
+
+    document.querySelectorAll('.theme-swatch').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.theme === themeId));
+    });
+    try {
+      localStorage.setItem('pda-theme', themeId);
+    } catch (e) {
+      // localStorage unavailable — theme just won't persist, harmless
+    }
+
+    renderNow();
+  }
+
+  document.querySelectorAll('.theme-swatch').forEach((btn) => {
+    btn.setAttribute('aria-pressed', String(btn.dataset.theme === currentTheme.id));
+    btn.addEventListener('click', () => applyTheme(btn.dataset.theme));
+  });
 
   /* ------------------------------------------------------------------
      True-3D carousel mount: adopts the real About/Vuil/Sens/Orbiteer/
@@ -414,6 +614,13 @@ async function initCylinderBackdrop() {
 
   if (!mounted) {
     initPlateReveal();
+    if (useTrueMount) {
+      // Mount was attempted (useTrueMount was true) but failed — initNav
+      // skipped the plain intersection-based nav highlighting up front on
+      // the assumption mounting would succeed, so turn it on now as part
+      // of the same fallback.
+      initSectionNavHighlight();
+    }
   }
 
   function onResize() {
@@ -457,9 +664,11 @@ async function initCylinderBackdrop() {
     let raf = null;
     function tick() {
       raf = requestAnimationFrame(tick);
-      ambientAngle += 0.0016;
+      ambientAngle += 0.0016 * currentTheme.spinSpeed;
       cylinderGroup.rotation.y = ambientAngle + scrollAngle;
-      particles.rotation.y += 0.00035;
+      particles.rotation.y += 0.00035 * currentTheme.particleSpeed;
+      const elapsed = (performance.now() - startTime) / 1000;
+      hullUniforms.uPulse.value = 0.5 + 0.5 * Math.sin(elapsed * 1.2);
       renderNow();
     }
     document.addEventListener('visibilitychange', () => {
@@ -501,6 +710,27 @@ async function initCylinderBackdrop() {
     let stops = getStops();
     window.addEventListener('resize', () => { stops = getStops(); });
 
+    // Clicking a nav link would otherwise land at the section's top (the
+    // browser's default hash-jump target), which is generally NOT the
+    // scroll position a stop above is defined at (the section's midpoint)
+    // — so the rotation wouldn't actually have reached that plate yet.
+    // Intercept these clicks and scroll to the exact stop position instead.
+    document.querySelectorAll('.nav-links a[data-nav]').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        const id = a.getAttribute('data-nav');
+        const el = document.getElementById(id);
+        if (!el) return;
+        e.preventDefault();
+        window.scrollTo({ top: el.offsetTop + el.offsetHeight / 2, behavior: 'smooth' });
+      });
+    });
+
+    function updateActiveNav(sectionId) {
+      document.querySelectorAll('.nav-links a[data-nav]').forEach((a) => {
+        a.classList.toggle('active', sectionId != null && a.getAttribute('data-nav') === sectionId);
+      });
+    }
+
     function targetAngle() {
       const y = window.scrollY;
       if (y <= stops[0].y) return stops[0].angle;
@@ -518,6 +748,10 @@ async function initCylinderBackdrop() {
     let raf = null;
 
     function updateMountedOpacity(groupAngle, forceHidden) {
+      let bestSection = null;
+      // Matches the pointer-events threshold below — nothing dim enough to
+      // be non-interactive should be able to claim the nav highlight.
+      let bestOpacity = 0.15;
       mountedObjects.forEach((m, i) => {
         let opacity;
         if (forceHidden) {
@@ -533,7 +767,12 @@ async function initCylinderBackdrop() {
         // drives the hull's matching clear zone — the hologram fades in
         // behind a panel exactly as it fades into view, and back again
         hullUniforms.uClearAmounts.value[i] = opacity;
+        if (opacity > bestOpacity) {
+          bestOpacity = opacity;
+          bestSection = m.sectionId;
+        }
       });
+      updateActiveNav(bestSection);
     }
 
     function tick() {
@@ -541,7 +780,9 @@ async function initCylinderBackdrop() {
       const target = targetAngle();
       currentAngle += (target - currentAngle) * 0.12;
       cylinderGroup.rotation.y = currentAngle;
-      particles.rotation.y += 0.00035;
+      particles.rotation.y += 0.00035 * currentTheme.particleSpeed;
+      const elapsed = (performance.now() - startTime) / 1000;
+      hullUniforms.uPulse.value = 0.5 + 0.5 * Math.sin(elapsed * 1.2);
       updateMountedOpacity(currentAngle, window.scrollY <= stops[0].y);
       renderNow();
       cssRenderer.render(scene, camera);
@@ -576,16 +817,16 @@ async function trySetupCarousel(THREE, cylinderGroup) {
     const CONTACT_ANGLE = (4 * Math.PI) / 3;
     const MOUNT_RADIUS = 2.2;
     const SCALE = 0.0042;
-    const PANEL_WIDTH = 340;
-    const CLUSTER_PANEL_WIDTH = 240;
+    const PANEL_WIDTH = 425;
+    const CLUSTER_PANEL_WIDTH = 300;
     const CLUSTER_SPREAD = 0.6; // radians between adjacent project cards
 
     const targets = [
-      { el: document.querySelector('#about .plate'), angle: 0, width: PANEL_WIDTH },
-      { el: document.querySelector('#projects .project-plate:nth-child(1)'), angle: PROJECTS_ANGLE - CLUSTER_SPREAD, width: CLUSTER_PANEL_WIDTH },
-      { el: document.querySelector('#projects .project-plate:nth-child(2)'), angle: PROJECTS_ANGLE, width: CLUSTER_PANEL_WIDTH },
-      { el: document.querySelector('#projects .project-plate:nth-child(3)'), angle: PROJECTS_ANGLE + CLUSTER_SPREAD, width: CLUSTER_PANEL_WIDTH },
-      { el: document.querySelector('#contact .plate'), angle: CONTACT_ANGLE, width: PANEL_WIDTH },
+      { el: document.querySelector('#about .plate'), angle: 0, width: PANEL_WIDTH, sectionId: 'about' },
+      { el: document.querySelector('#projects .project-plate:nth-child(1)'), angle: PROJECTS_ANGLE - CLUSTER_SPREAD, width: CLUSTER_PANEL_WIDTH, sectionId: 'projects' },
+      { el: document.querySelector('#projects .project-plate:nth-child(2)'), angle: PROJECTS_ANGLE, width: CLUSTER_PANEL_WIDTH, sectionId: 'projects' },
+      { el: document.querySelector('#projects .project-plate:nth-child(3)'), angle: PROJECTS_ANGLE + CLUSTER_SPREAD, width: CLUSTER_PANEL_WIDTH, sectionId: 'projects' },
+      { el: document.querySelector('#contact .plate'), angle: CONTACT_ANGLE, width: PANEL_WIDTH, sectionId: 'contact' },
     ].filter((t) => t.el);
 
     if (!targets.length) return null;
@@ -608,7 +849,7 @@ async function trySetupCarousel(THREE, cylinderGroup) {
       obj.scale.set(SCALE, SCALE, SCALE);
       cylinderGroup.add(obj);
 
-      return { el, angle: t.angle };
+      return { el, angle: t.angle, sectionId: t.sectionId };
     });
 
     return { cssRenderer, mountedObjects };
@@ -669,26 +910,44 @@ function initNav() {
     });
   }
 
+  // When the true-mount carousel is active, "which section is showing" is
+  // decided by rotation angle (see updateActiveNav in runMountedLoop), not
+  // by how much of a section's (mostly emptied-out) DOM footprint happens
+  // to intersect the viewport — the two can disagree, since content isn't
+  // visually inside its section's box anymore once mounted. Only fall back
+  // to the plain intersection-based highlighting when mounting either was
+  // never attempted, or was attempted and failed (handled from
+  // initCylinderBackdrop once that's known).
+  if (!useTrueMount) {
+    initSectionNavHighlight();
+  }
+}
+
+/* ==========================================================================
+   3b. Nav active-link highlighting from section visibility — used whenever
+   the true-mount carousel isn't driving it instead (see initNav above)
+   ========================================================================== */
+
+function initSectionNavHighlight() {
   const sections = ['about', 'projects', 'contact']
     .map((id) => document.getElementById(id))
     .filter(Boolean);
   const navAnchors = document.querySelectorAll('.nav-links a');
 
-  if ('IntersectionObserver' in window && sections.length) {
-    const navObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            navAnchors.forEach((a) => a.classList.remove('active'));
-            const match = document.querySelector(`.nav-links a[data-nav="${entry.target.id}"]`);
-            if (match) match.classList.add('active');
-          }
-        });
-      },
-      { threshold: 0.4 }
-    );
-    sections.forEach((s) => navObserver.observe(s));
-  }
+  if (!('IntersectionObserver' in window) || !sections.length) return;
+  const navObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          navAnchors.forEach((a) => a.classList.remove('active'));
+          const match = document.querySelector(`.nav-links a[data-nav="${entry.target.id}"]`);
+          if (match) match.classList.add('active');
+        }
+      });
+    },
+    { threshold: 0.4 }
+  );
+  sections.forEach((s) => navObserver.observe(s));
 }
 
 /* ==========================================================================

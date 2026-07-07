@@ -490,15 +490,49 @@ main { position: static; }
   position: relative;
   z-index: var(--z-persistent);
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 20px;
   padding: 32px clamp(20px, 5vw, 56px) 44px;
   font-size: 13px;
   color: var(--ink-faint);
+  background: rgba(11, 13, 17, 0.72);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
   border-top: 1px solid var(--panel-border);
 }
 
 .footer-link { transition: color 0.2s ease; }
 .footer-link:hover { color: var(--blue-bright); }
+
+.theme-switcher {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  padding: 0;
+  border: 2px solid transparent;
+  background-color: var(--swatch-color);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.theme-swatch:hover { transform: scale(1.18); }
+.theme-swatch:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.theme-swatch[aria-pressed="true"] {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--bg), 0 0 10px -2px var(--swatch-color);
+}
+
+.theme-swatch--cyan { --swatch-color: #3d9eff; }
+.theme-swatch--amber { --swatch-color: #cc6a2f; }
+.theme-swatch--violet { --swatch-color: #8b3fe6; }
 
 /* ==========================================================================
    Responsive
