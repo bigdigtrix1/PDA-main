@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Game info — PDA</title>
-  <meta name="description" content="Game info for Orbiteer and PDA's other projects.">
+  <meta name="description" content="Technical deep-dive on Orbiteer, PDA's Android merge puzzle game.">
 
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 
@@ -32,106 +32,132 @@
     </nav>
   </header>
 
-  <main id="main" class="gameinfo-main">
+  <main id="main" class="doc-main">
     <p class="eyebrow">Game info</p>
 
-    <article class="gameinfo-doc">
+    <article class="doc-entry">
       <p class="plate-tag">Orbiteer</p>
-      <h1 class="gameinfo-title">Orbiteer</h1>
-      <p class="gameinfo-updated">Last updated: <span class="placeholder">7/7-2026</span></p>
+      <h1 class="doc-title">Orbiteer</h1>
+      <p class="doc-updated">Last updated: <span class="placeholder">7/7-2026</span></p>
 
-      <p class="game-intro">
-        A planet-merging puzzle game for Android, built with Kotlin and Jetpack Compose.
-        Place tiles on a 6×5 grid, merge matching planets into rarer ones, and chase deeper ranks, badges, and leaderboard position across post-launch content built on top of the core loop. If you have questions about this gameinfo, contact us at
+      <p class="doc-intro">
+        A planet-merging puzzle game for Android, built with Kotlin and Jetpack
+        Compose. Place tiles on a 6×5 grid, merge matching planets into rarer
+        ones, and chase deeper ranks, badges, and leaderboard position across
+        post-launch content built on top of the core loop. Questions about
+        anything below? Reach out at
         <span class="placeholder">immerse.pda@gmail.com</span>.
       </p>
 
-    <section class="gameinfo-section">
+      <section class="doc-section">
+        <h2 class="doc-h2">Core Gameplay</h2>
+        <ul class="doc-list">
+          <li>6×5 grid with flood-fill merge detection — any connected group of 3+ matching tiles merges, in any shape, not just rows or lines</li>
+          <li>Tier-skip scaling — bigger groups jump further: a group of N tiles skips N − 2 tiers, rewarding setting up large clusters over simple 3-tile matches</li>
+          <li>Combo multiplier — chaining merges quickly builds a live combo, up to ×8, applied directly to score as you play</li>
+          <li>13-tier merge chain per theme, from a common starting tile up to a unique final "legendary" tile</li>
+        </ul>
+      </section>
 
-      <h3 class="info-h3">Core Gameplay</h3>
-      <p class="info-body">
-        6×5 grid with flood-fill merge detection — any connected group of 3+ matching tiles merges, in any shape, not just rows or lines
-        Tier-skip scaling — bigger groups jump further: a group of N tiles skips N − 2 tiers, rewarding setting up large clusters over simple 3-tile matches
-        Combo multiplier — chaining merges quickly builds a live combo, up to ×8, applied directly to score as you play
-        13-tier merge chain per theme, from a common starting tile up to a unique final "legendary" tile
-      </p>
+      <section class="doc-section">
+        <h2 class="doc-h2">Progression Systems</h2>
+        <ul class="doc-list">
+          <li>Ranks — 50 ranks (10 titles × 5 sub-ranks, Apprentice through Immortal), with a threshold curve tuned from real playtest data so no single game can skip a large chunk of the ladder</li>
+          <li>Prestige — up to 500 prestige levels, unlocked at max rank; resets XP but keeps everything else, with a permanent score bonus per level</li>
+          <li>Badges — 40 badges across Gameplay, Score, and Playtime categories, each granting a permanent score bonus</li>
+          <li>Score multiplier — badge and prestige bonuses combine into a single multiplier (capped at ×4.50 fully maxed), locked in at the start of each game and applied live to the running score, not just revealed at game-over. A badge earned mid-game affects the next game, not the one that earned it.</li>
+        </ul>
+      </section>
 
-      <h3 class="info-h3">Progression Systems</h3>
-      <p class="info-body">
-        Ranks — 50 ranks (10 titles × 5 sub-ranks, Apprentice through Immortal), with a threshold curve tuned from real playtest data so no single game can skip a large chunk of the ladder
-        Prestige — up to 500 prestige levels, unlocked at max rank; resets XP but keeps everything else, with a permanent score bonus per level
-        Badges — 40 badges across Gameplay, Score, and Playtime categories, each granting a permanent score bonus
-        Score multiplier — badge and prestige bonuses combine into a single multiplier (capped at ×4.50 fully maxed), locked in at the start of each game and applied live to the running score — not just revealed at game-over. A badge earned mid-game affects the next game, not the one that earned it.
-      </p>
+      <section class="doc-section">
+        <h2 class="doc-h2">Themes</h2>
+        <p class="doc-body">
+          11 unlockable visual themes (Deep Space, Ocean Depths, Cozy Farm, Neon
+          City, Solar Forge, Ancient Ruins, Cherry Blossom, Candy Land,
+          Prehistoric, Lunar Dream, The Void), each with:
+        </p>
+        <ul class="doc-list">
+          <li>Its own 13-tile emoji set and tile names</li>
+          <li>A distinct color palette applied throughout the UI</li>
+          <li>An animated background style, unlocked by rank index (evenly spread across the full rank ladder)</li>
+        </ul>
+        <p class="doc-body">
+          Themes unlock via XP milestones (aligned to specific rank completions)
+          or high-score thresholds.
+        </p>
+      </section>
 
-      <h3 class="info-h3">Themes</h3>
-      <p class="info-body">
-        11 unlockable visual themes (Deep Space, Ocean Depths, Cozy Farm, Neon City, Solar Forge, Ancient Ruins, Cherry Blossom, Candy Land, Prehistoric, Lunar Dream, The Void), each with:
+      <section class="doc-section">
+        <h2 class="doc-h2">Leaderboards &amp; Social</h2>
+        <ul class="doc-list">
+          <li>Firebase Authentication — every player gets a silent anonymous identity on first launch; optional Google Sign-In links to that identity to preserve progress across devices/reinstalls</li>
+          <li>Friend codes — 6-character codes for adding friends without any request/accept flow</li>
+          <li>Global (top 100) and Friends leaderboards, backed by Cloud Firestore</li>
+          <li>Server-enforced integrity — Firestore Security Rules validate score ceilings and document ownership; username uniqueness is enforced via atomic transactions against a dedicated registry collection</li>
+        </ul>
+      </section>
 
-        Its own 13-tile emoji set and tile names
-        A distinct color palette applied throughout the UI
-        An animated background style, unlocked by rank index (evenly spread across the full rank ladder)
-        Themes unlock via XP milestones (aligned to specific rank completions) or high-score thresholds.
-      </p>
+      <section class="doc-section">
+        <h2 class="doc-h2">Monetization</h2>
+        <ul class="doc-list">
+          <li>AdMob interstitial ads every 2nd game-over</li>
+          <li>Rewarded ads offering a bonus starting tile on the next game</li>
+        </ul>
+      </section>
 
-      <h3 class="info-h3">Leaderboards & Social</h3>
-      <p class="info-body">
-        Firebase Authentication — every player gets a silent anonymous identity on first launch; optional Google Sign-In links to that identity to preserve progress across devices/reinstalls
-        Friend codes — 6-character codes for adding friends without any request/accept flow
-        Global (top 100) and Friends leaderboards, backed by Cloud Firestore
-        Server-enforced integrity — Firestore Security Rules validate score ceilings and document ownership; username uniqueness is enforced via atomic transactions against a dedicated registry collection
-      </p>
+      <section class="doc-section">
+        <h2 class="doc-h2">Tech Stack</h2>
+        <ul class="doc-kv-list">
+          <li><span class="doc-kv-label">Language</span><span class="doc-kv-value">Kotlin 2.2.0</span></li>
+          <li><span class="doc-kv-label">UI</span><span class="doc-kv-value">Jetpack Compose</span></li>
+          <li><span class="doc-kv-label">Local storage</span><span class="doc-kv-value">Room 2.7.1 (kapt)</span></li>
+          <li><span class="doc-kv-label">Backend</span><span class="doc-kv-value">Firebase (Auth, Firestore) — BoM 34.15.0</span></li>
+          <li><span class="doc-kv-label">Ads</span><span class="doc-kv-value">AdMob</span></li>
+          <li><span class="doc-kv-label">Build</span><span class="doc-kv-value">AGP 8.7.3, Gradle 8.9, Java 17</span></li>
+          <li><span class="doc-kv-label">CI/CD</span><span class="doc-kv-value">GitHub Actions</span></li>
+        </ul>
+      </section>
 
-      <h3 class="info-h3">Monetization</h3>
-      <p class="info-body">
-        AdMob interstitial ads every 2nd game-over.
-        Rewarded ads offering a bonus starting tile on the next game.
-      </p>
+      <section class="doc-section">
+        <h2 class="doc-h2">Project Structure</h2>
+        <pre class="doc-pre">app/src/main/java/dk/pda/orbiteer/
+├── game/                  # Core game logic (engine-only, no UI/player-progression knowledge)
+│   ├── GameEngine.kt      # Grid state, flood-fill merge resolution, combo tracking
+│   ├── Planet.kt          # Tile tier definitions, score/XP values, colors
+│   ├── RankSystem.kt      # Rank curve, prestige bonus calculation
+│   └── BadgeSystem.kt     # Badge definitions and unlock conditions
+├── ui/                    # Jetpack Compose screens and view models
+│   ├── GameScreen.kt      # Main game UI — grid, popups, results, settings
+│   ├── GameViewModel.kt   # App state, player stats, game lifecycle
+│   ├── ThemeManager.kt    # Theme/background definitions and unlock logic
+│   ├── AppIcons.kt        # Custom vector icon renderer (ranks &amp; badges)
+│   ├── OnboardingScreen.kt
+│   └── BackgroundRenderer.kt / SoundManager.kt
+├── data/                  # Room database (PlayerStats, ScoreEntry)
+├── auth/                  # Firebase Authentication wrapper
+├── leaderboard/           # Firestore leaderboard read/write, friend codes
+└── ads/                   # AdMob integration</pre>
+      </section>
 
-      <h3 class="info-h3">Tech Stack</h3>
-      <p class="info-body">
-        Language	    Kotlin 2.2.0
-        UI	          Jetpack Compose
-        Local storage	Room 2.7.1 (kapt)
-        Backend	      Firebase (Auth, Firestore) — BoM 34.15.0
-        Ads	          AdMob
-        Build	        AGP 8.7.3, Gradle 8.9, Java 17
-        CI/CD	        GitHub Actions
-      </p>
-
-      <h3 class="info-h3">Project Structure</h3>
-      <p class="info-body">
-        app/src/main/java/dk/pda/orbiteer/
-        ├── game/                  # Core game logic (engine-only, no UI/player-progression knowledge)
-        │   ├── GameEngine.kt      # Grid state, flood-fill merge resolution, combo tracking
-        │   ├── Planet.kt          # Tile tier definitions, score/XP values, colors
-        │   ├── RankSystem.kt      # Rank curve, prestige bonus calculation
-        │   └── BadgeSystem.kt     # Badge definitions and unlock conditions
-        ├── ui/                    # Jetpack Compose screens and view models
-        │   ├── GameScreen.kt      # Main game UI — grid, popups, results, settings
-        │   ├── GameViewModel.kt   # App state, player stats, game lifecycle
-        │   ├── ThemeManager.kt    # Theme/background definitions and unlock logic
-        │   ├── AppIcons.kt        # Custom vector icon renderer (ranks & badges)
-        │   ├── OnboardingScreen.kt
-        │   └── BackgroundRenderer.kt / SoundManager.kt
-        ├── data/                  # Room database (PlayerStats, ScoreEntry)
-        ├── auth/                  # Firebase Authentication wrapper
-        ├── leaderboard/           # Firestore leaderboard read/write, friend codes
-        └── ads/                   # AdMob integration
-      </p>
-
-      <h3 class="info-h3">Building</h3>
-      <p class="info-body">
-        Requirements: JDK 17, Android SDK, a Firebase project with Authentication (Anonymous + Google) and Firestore enabled.
-
-        Add app/google-services.json from your Firebase project
-        Register your debug and release SHA-1/SHA-256 fingerprints in Firebase Console (required for Google Sign-In)
-        Set the Web Client ID in AuthManager.kt
-        Publish the Firestore security rules (see firestore.rules)
-        For release builds via CI, set KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD as GitHub Actions secrets
-        Debug builds run directly from Android Studio; release builds (assembleRelease / bundleRelease) run via the GitHub Actions workflow on push to master.
-      </p>
-    </section>
+      <section class="doc-section">
+        <h2 class="doc-h2">Building</h2>
+        <p class="doc-body">
+          Requirements: JDK 17, Android SDK, a Firebase project with
+          Authentication (Anonymous + Google) and Firestore enabled.
+        </p>
+        <ul class="doc-list">
+          <li>Add <code>app/google-services.json</code> from your Firebase project</li>
+          <li>Register your debug and release SHA-1/SHA-256 fingerprints in Firebase Console (required for Google Sign-In)</li>
+          <li>Set the Web Client ID in <code>AuthManager.kt</code></li>
+          <li>Publish the Firestore security rules (see <code>firestore.rules</code>)</li>
+          <li>For release builds via CI, set <code>KEYSTORE_BASE64</code>, <code>KEYSTORE_PASSWORD</code>, <code>KEY_ALIAS</code>, and <code>KEY_PASSWORD</code> as GitHub Actions secrets</li>
+        </ul>
+        <p class="doc-body">
+          Debug builds run directly from Android Studio; release builds
+          (<code>assembleRelease</code> / <code>bundleRelease</code>) run via the
+          GitHub Actions workflow on push to <code>master</code>.
+        </p>
+      </section>
     </article>
   </main>
 

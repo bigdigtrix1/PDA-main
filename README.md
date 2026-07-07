@@ -4,8 +4,10 @@ A single-page, dark-themed site for PDA: fixed nav, a detailed WebGL
 holographic cylinder that stays on screen for the entire scroll, and content
 plates — About Me, Current Projects (Vuil, Sens, Orbiteer), Contact — that
 are genuinely glued to the cylinder and rotate with it as you scroll, on
-screens with the room and motion budget for it. A separate, plain Policies
-page holds the Orbiteer privacy policy.
+screens with the room and motion budget for it. Two plain, separate pages
+hold longer-form content: `policies.html` (the Orbiteer privacy policy) and
+`gameinfo.html` (a technical deep-dive on Orbiteer) — see "Adding another
+long-form page" below for how to add a third.
 
 Plain HTML/CSS/JS — no build step, no framework, no bundler.
 
@@ -28,20 +30,18 @@ No build step is needed — GitHub Pages serves the files as-is.
 
 ## Content still to fill in
 
-- [ ] **Contact details** (`index.html`, `#contact`) — `you@example.com` and
-      `github.com/yourusername` are placeholders. Replace both, and delete
-      the "placeholder contact details" note once real ones are in.
+- [x] ~~Contact details~~ — real email and GitHub are in.
 - [ ] **About Me** (`index.html`, `#about`) — first-draft bio, written from
       what's in this conversation. Read it over and make it sound like you;
       the italic note under it is a reminder to remove once you're happy
-      with it.
-- [ ] **Policies** (`policies.html`) — the privacy policy text is real and
-      complete, but it has two placeholders you supplied as brackets, now
-      highlighted in blue on the page so they're easy to spot:
-      `[DATE YOU PUBLISH THIS]` (appears once, at the top) and
-      `[YOUR CONTACT EMAIL]` (appears three times). Find-and-replace both
-      before this goes live — a privacy policy with a placeholder email
-      isn't one regulators or app stores will accept.
+      with it (currently emptied out — add your own line back in, or leave
+      it blank if the bio doesn't need a caveat anymore).
+- [ ] **Policies** (`policies.html`) — one placeholder left:
+      `[DATE YOU PUBLISH THIS]`, highlighted in blue near the top. The
+      contact email is already filled in.
+- [ ] **Game Info** (`gameinfo.html`) — the "Last updated" date is a real
+      date already (7/7-2026); double check it's still accurate whenever
+      you update this page.
 - [x] ~~Orbiteer~~ — short blurb is in, matching Vuil and Sens.
 - Optional: `assets/favicon.svg` is a simple placeholder mark — swap for a
   real logo if you have one.
@@ -98,10 +98,10 @@ just won't spin and plates won't be mounted to it — that's intentional
   - `SCALE` (0.0042) — how large the mounted panels appear. Still the most
     likely thing to need a nudge since I can't preview the actual render.
   - `MOUNT_RADIUS` (2.2) — how far from the cylinder's axis the panels sit.
-  - `PANEL_WIDTH` (300) / `CLUSTER_PANEL_WIDTH` (210, in px) — authored
+  - `PANEL_WIDTH` (340) / `CLUSTER_PANEL_WIDTH` (240, in px) — authored
     widths for the solo plates (About/Contact) vs. the three project cards,
     before the 3D scale is applied.
-  - `CLUSTER_SPREAD` (0.55 radians) — the angle between adjacent project
+  - `CLUSTER_SPREAD` (0.6 radians) — the angle between adjacent project
     cards. If Vuil/Sens/Orbiteer are still crowding each other, raise this;
     if they look too spread out to read as one group, lower it.
   - `uClearWidth` (0.45 radians), near the top of the hull's fragment shader
@@ -115,4 +115,26 @@ just won't spin and plates won't be mounted to it — that's intentional
 - Colors, fonts, spacing, and the z-index scale are all CSS custom
   properties at the top of `css/style.css` under `:root` if you want to
   tune anything.
+
+## Adding another long-form page
+
+`policies.html` and `gameinfo.html` both use the same reusable set of
+classes (`css/style.css`, under "Long-form document pages") — plain,
+readable typography with no cylinder/3D involved, for whenever there's more
+to say than fits on a plate. To add a third:
+
+1. Copy `gameinfo.html` (or `policies.html`) as your starting point.
+2. Keep the `<head>` and nav/footer as they are; just add your new page to
+   the nav list in **every** HTML file (`index.html`, `policies.html`,
+   `gameinfo.html`, and the new page itself, marked `class="active"` there).
+3. Inside `<main class="doc-main">`, structure content as:
+   - `doc-title` / `doc-updated` / `doc-intro` once, near the top
+   - one `<section class="doc-section">` per topic, each with a
+     `doc-h2` (and an optional `doc-h3` for a sub-heading within it)
+   - body copy in `doc-body` (paragraphs), `doc-list` (bullets),
+     `doc-kv-list` (label/value rows — specs, versions), or `doc-pre`
+     (file trees, anything whitespace-sensitive) — whichever fits
+4. That's it — no new CSS needed unless the content needs a shape none of
+   the above cover, in which case add it next to the others under "Long-form
+   document pages" rather than inventing a page-specific class.
 
