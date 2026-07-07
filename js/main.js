@@ -576,9 +576,9 @@ async function trySetupCarousel(THREE, cylinderGroup) {
     const CONTACT_ANGLE = (4 * Math.PI) / 3;
     const MOUNT_RADIUS = 2.2;
     const SCALE = 0.0042;
-    const PANEL_WIDTH = 300;
-    const CLUSTER_PANEL_WIDTH = 210;
-    const CLUSTER_SPREAD = 0.55; // radians between adjacent project cards
+    const PANEL_WIDTH = 340;
+    const CLUSTER_PANEL_WIDTH = 240;
+    const CLUSTER_SPREAD = 0.6; // radians between adjacent project cards
 
     const targets = [
       { el: document.querySelector('#about .plate'), angle: 0, width: PANEL_WIDTH },
