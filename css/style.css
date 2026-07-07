@@ -538,10 +538,15 @@ main { position: static; }
 }
 
 /* ==========================================================================
-   Policy pages — plain and readable, no cylinder theatrics
+   Long-form document pages — plain and readable, no cylinder theatrics.
+   Shared by policies.html, gameinfo.html, and any future page like them:
+   give <main> class="doc-main", wrap content in <article class="doc-doc">,
+   use doc-title/doc-updated/doc-intro once, then doc-section + doc-h2
+   (+ optional doc-h3) repeated per topic, with doc-body / doc-list /
+   doc-kv-list / doc-pre for whatever shape the content takes.
    ========================================================================== */
 
-.policy-main {
+.doc-main {
   position: relative;
   z-index: var(--z-persistent);
   max-width: 720px;
@@ -549,7 +554,7 @@ main { position: static; }
   padding: calc(var(--nav-height) + 56px) clamp(20px, 5vw, 56px) 100px;
 }
 
-.policy-title {
+.doc-title {
   font-family: var(--font-display);
   font-size: clamp(28px, 4vw, 40px);
   font-weight: 600;
@@ -557,14 +562,14 @@ main { position: static; }
   margin-bottom: 8px;
 }
 
-.policy-updated {
+.doc-updated {
   font-family: var(--font-mono);
   font-size: 12.5px;
   color: var(--ink-faint);
   margin-bottom: 32px;
 }
 
-.policy-intro {
+.doc-intro {
   color: var(--ink-soft);
   font-size: 16px;
   line-height: 1.75;
@@ -573,17 +578,17 @@ main { position: static; }
   border-bottom: 1px solid var(--panel-border);
 }
 
-.policy-section {
+.doc-section {
   margin-bottom: 40px;
   padding-top: 32px;
   border-top: 1px solid var(--panel-border);
 }
-.policy-section:first-of-type {
+.doc-section:first-of-type {
   padding-top: 0;
   border-top: none;
 }
 
-.policy-h2 {
+.doc-h2 {
   font-family: var(--font-display);
   font-size: 21px;
   font-weight: 600;
@@ -591,7 +596,7 @@ main { position: static; }
   margin-bottom: 16px;
 }
 
-.policy-h3 {
+.doc-h3 {
   font-family: var(--font-body);
   font-size: 15.5px;
   font-weight: 600;
@@ -599,30 +604,78 @@ main { position: static; }
   margin: 22px 0 8px;
 }
 
-.policy-body {
+.doc-body {
   color: var(--ink-soft);
   font-size: 15.5px;
   line-height: 1.75;
   margin-bottom: 14px;
 }
 
-.policy-list {
+.doc-list {
   color: var(--ink-soft);
   font-size: 15.5px;
   line-height: 1.75;
   padding-left: 22px;
   margin-bottom: 14px;
 }
-.policy-list li { list-style: disc; margin-bottom: 6px; }
+.doc-list li { list-style: disc; margin-bottom: 6px; }
 
-.policy-body a,
-.policy-list a {
+/* label/value rows — version numbers, specs, anything tabular */
+.doc-kv-list {
+  margin-bottom: 14px;
+}
+.doc-kv-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--panel-border);
+  font-size: 15px;
+}
+.doc-kv-list li:last-child { border-bottom: none; }
+.doc-kv-label {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  color: var(--ink-faint);
+  width: 112px;
+  flex-shrink: 0;
+}
+.doc-kv-value { color: var(--ink-soft); }
+
+/* preformatted blocks — file trees, code, anything whitespace-sensitive */
+.doc-pre {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  overflow-x: auto;
+  white-space: pre;
+  margin-bottom: 14px;
+}
+
+.doc-body a,
+.doc-list a {
   color: var(--blue);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.policy-body a:hover,
-.policy-list a:hover { color: var(--blue-bright); }
+.doc-body a:hover,
+.doc-list a:hover { color: var(--blue-bright); }
+
+.doc-body code,
+.doc-list code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
 
 .placeholder {
   color: var(--blue-bright);
