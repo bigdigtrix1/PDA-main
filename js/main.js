@@ -379,14 +379,15 @@ async function initCylinderBackdrop() {
         float alpha;
 
         if (uStyleType > 0.5) {
-          // faceted chrome: each hexagon reads as a different shade of the
-          // *same* color, the same way the other themes get their per-cell
-          // brightness — from alpha (how much of the dark page shows
-          // through), not from mixing the color itself toward white. Color
-          // stays close to uColor throughout; only grazing edges lean
-          // toward the brighter accent, same as the other themes do.
-          color = mix(uColor, uColorBright, fresnel * 0.6);
-          alpha = clamp(0.32 + hex.y * 0.5 + hexBorder * 0.15 + fresnel * 0.25, 0.0, 1.0);
+          // faceted chrome: flat, clean per-cell color driven only by that
+          // cell's own hash — no fresnel gradient layered on top. Fresnel
+          // varies smoothly across the curved surface, not aligned to the
+          // hex cell edges at all, so mixing it in here read as a second
+          // pattern superimposed on the first. This is the debug view's
+          // vec3(hex.y) look, just mapped into the theme's own color range
+          // instead of straight grayscale.
+          color = mix(uColor, uColorBright, hex.y * 0.6);
+          alpha = clamp(0.18 + hex.y * 0.35 + hexBorder * 0.08, 0.0, 1.0);
         } else {
           alpha = clamp(0.1 + panelShade + fresnel * 0.3 + hexBorder * 0.1, 0.0, 1.0);
           color = mix(uColor, uColorBright, clamp(fresnel * 0.9, 0.0, 1.0));
