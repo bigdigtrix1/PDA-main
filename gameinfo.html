@@ -3,22 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Game info — PDA</title>
+  <title>Game Info — PDA</title>
   <meta name="description" content="Technical deep-dive on Orbiteer, PDA's Android merge puzzle game.">
 
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body data-holo="sparse">
+
+  <div id="holo-bg" aria-hidden="true"></div>
+  <div class="holo-overlay" aria-hidden="true"></div>
 
   <a class="skip-link" href="#main">Skip to content</a>
 
-  <header class="site-nav">
+  <header class="site-nav" id="siteNav">
     <a href="index.html#hero" class="nav-mark">PDA</a>
     <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
       <span></span><span></span><span></span>
@@ -27,34 +30,34 @@
       <a href="index.html#about">About Me</a>
       <a href="index.html#projects">Current Projects</a>
       <a href="index.html#contact">Contact</a>
-      <a href="policies.html">Policies</a>
       <a href="gameinfo.html" class="active">Game Info</a>
+      <a href="policies.html">Policies</a>
     </nav>
   </header>
 
   <main id="main" class="doc-main">
-    <p class="eyebrow">Game info</p>
+    <p class="eyebrow">Game Info</p>
 
-    <article class="doc-entry">
-      <p class="plate-tag">Orbiteer</p>
+    <article class="doc-panel">
+      <p class="card-tag">Orbiteer</p>
       <h1 class="doc-title">Orbiteer</h1>
-      <p class="doc-updated">Last updated: <span class="placeholder">7/7-2026</span></p>
+      <p class="doc-updated">Last updated: 7/7-2026</p>
 
       <p class="doc-intro">
         A planet-merging puzzle game for Android, built with Kotlin and Jetpack
-        Compose. Place tiles on a 6×5 grid, merge matching planets into rarer
+        Compose. Place tiles on a 6&times;5 grid, merge matching planets into rarer
         ones, and chase deeper ranks, badges, and leaderboard position across
         post-launch content built on top of the core loop. Questions about
         anything below? Reach out at
-        <span class="placeholder">immerse.pda@gmail.com</span>.
+        <a href="mailto:immerse.pda@gmail.com">immerse.pda@gmail.com</a>.
       </p>
 
       <section class="doc-section">
         <h2 class="doc-h2">Core Gameplay</h2>
         <ul class="doc-list">
-          <li>6×5 grid with flood-fill merge detection — any connected group of 3+ matching tiles merges, in any shape, not just rows or lines</li>
-          <li>Tier-skip scaling — bigger groups jump further: a group of N tiles skips N − 2 tiers, rewarding setting up large clusters over simple 3-tile matches</li>
-          <li>Combo multiplier — chaining merges quickly builds a live combo, up to ×8, applied directly to score as you play</li>
+          <li>6&times;5 grid with flood-fill merge detection — any connected group of 3+ matching tiles merges, in any shape, not just rows or lines</li>
+          <li>Tier-skip scaling — bigger groups jump further: a group of N tiles skips N &minus; 2 tiers, rewarding setting up large clusters over simple 3-tile matches</li>
+          <li>Combo multiplier — chaining merges quickly builds a live combo, up to &times;8, applied directly to score as you play</li>
           <li>13-tier merge chain per theme, from a common starting tile up to a unique final "legendary" tile</li>
         </ul>
       </section>
@@ -62,10 +65,10 @@
       <section class="doc-section">
         <h2 class="doc-h2">Progression Systems</h2>
         <ul class="doc-list">
-          <li>Ranks — 50 ranks (10 titles × 5 sub-ranks, Apprentice through Immortal), with a threshold curve tuned from real playtest data so no single game can skip a large chunk of the ladder</li>
+          <li>Ranks — 50 ranks (10 titles &times; 5 sub-ranks, Apprentice through Immortal), with a threshold curve tuned from real playtest data so no single game can skip a large chunk of the ladder</li>
           <li>Prestige — up to 500 prestige levels, unlocked at max rank; resets XP but keeps everything else, with a permanent score bonus per level</li>
           <li>Badges — 40 badges across Gameplay, Score, and Playtime categories, each granting a permanent score bonus</li>
-          <li>Score multiplier — badge and prestige bonuses combine into a single multiplier (capped at ×4.50 fully maxed), locked in at the start of each game and applied live to the running score, not just revealed at game-over. A badge earned mid-game affects the next game, not the one that earned it.</li>
+          <li>Score multiplier — badge and prestige bonuses combine into a single multiplier (capped at &times;4.50 fully maxed), locked in at the start of each game and applied live to the running score, not just revealed at game-over. A badge earned mid-game affects the next game, not the one that earned it.</li>
         </ul>
       </section>
 
@@ -162,11 +165,12 @@
   </main>
 
   <footer class="site-footer">
-    <span>© 2026 PDA</span>
-    <a href="policies.html" class="footer-dim footer-link">Policies</a>
+    <span>&copy; 2026 PDA</span>
+    <a href="policies.html" class="footer-link">Policies</a>
     <span class="footer-dim">Built with intent.</span>
   </footer>
 
-  <script type="module" src="js/main.js"></script>
+  <script src="js/hologram.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>

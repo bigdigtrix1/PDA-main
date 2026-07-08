@@ -10,32 +10,19 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="css/style.css">
-
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://unpkg.com/three@0.185.1/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.185.1/examples/jsm/"
-    }
-  }
-  </script>
 </head>
 <body>
 
-  <!-- Persistent animated backdrop. Populated by js/main.js. Empty/hidden gracefully if WebGL is unavailable or reduced motion is requested. -->
-  <div id="bg-canvas-container" aria-hidden="true"></div>
-
-  <!-- Only used on wide screens with full motion: the About/Projects/Contact
-       plates get adopted into here and mounted onto the rotating cylinder
-       as a carousel. Left empty (and unused) everywhere else. -->
-  <div id="css3d-container" aria-hidden="true"></div>
+  <!-- Holographic hexagon backdrop (canvas is injected by js/hologram.js) -->
+  <div id="holo-bg" aria-hidden="true"></div>
+  <div class="holo-overlay" aria-hidden="true"></div>
 
   <a class="skip-link" href="#main">Skip to content</a>
 
-  <header class="site-nav">
+  <header class="site-nav" id="siteNav">
     <a href="#hero" class="nav-mark">PDA</a>
     <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
       <span></span><span></span><span></span>
@@ -44,8 +31,8 @@
       <a href="#about" data-nav="about">About Me</a>
       <a href="#projects" data-nav="projects">Current Projects</a>
       <a href="#contact" data-nav="contact">Contact</a>
-      <a href="policies.html">Policies</a>
       <a href="gameinfo.html">Game Info</a>
+      <a href="policies.html">Policies</a>
     </nav>
   </header>
 
@@ -54,7 +41,7 @@
     <section id="hero" class="hero">
       <div class="hero-inner">
         <p class="eyebrow">Independent Development</p>
-        <h1 class="hero-mark">PDA</h1>
+        <h1 class="hero-mark" data-text="PDA">PDA</h1>
         <p class="hero-tagline">Small, focused and dedicated private project development</p>
       </div>
       <div class="scroll-cue" aria-hidden="true">
@@ -66,16 +53,20 @@
     <section id="about" class="section">
       <div class="section-inner">
         <p class="eyebrow">01 — About Me</p>
-        <div class="plate plate-wide">
-          <p class="plate-body">
-            By day, I keep enterprise infrastructure honest — monitoring systems, network
-            configuration, the plumbing most people never notice until it breaks. By night,
-            I build. PDA is where that shows up: small, focused language models built to
-            actually be used, not just demoed. Currently deep in fine-tuning runs and template
-            work, with a long-standing habit of pulling apart the newest Android hardware to
-            see how it's put together.
-          </p>
-          <p class="plate-note"></p>
+        <h2 class="section-title">The person behind the panels.</h2>
+
+        <div class="holo holo-wide" data-drift="22" data-float="1">
+          <article class="holo-card">
+            <p class="card-tag">Profile</p>
+            <p class="card-body">
+              By day, I keep enterprise infrastructure honest — monitoring systems, network
+              configuration, the plumbing most people never notice until it breaks. By night,
+              I build. PDA is where that shows up: small, focused language models built to
+              actually be used, not just demoed. Currently deep in fine-tuning runs and template
+              work, with a long-standing habit of pulling apart the newest Android hardware to
+              see how it's put together.
+            </p>
+          </article>
         </div>
       </div>
     </section>
@@ -85,36 +76,43 @@
         <p class="eyebrow">02 — Current Projects</p>
         <h2 class="section-title">What's running right now.</h2>
 
-        <div class="plate-grid">
+        <div class="holo-grid">
 
-          <article class="plate project-plate">
-            <p class="plate-tag">Local AI</p>
-            <h3 class="plate-title">Vuil</h3>
-            <p class="plate-body">
-              PDA's commercial assistant. A Llama 3.1 8B model, fine-tuned with LLaMA-Factory
-              and trained locally end to end — built to be capable without the weight of a
-              giant general-purpose system.
-            </p>
-          </article>
+          <div class="holo" data-drift="16" data-float="1">
+            <article class="holo-card">
+              <p class="card-tag">Local AI</p>
+              <h3 class="card-title">Vuil</h3>
+              <p class="card-body">
+                PDA's commercial assistant. A Llama 3.1 8B model, fine-tuned with LLaMA-Factory
+                and trained locally end to end — built to be capable without the weight of a
+                giant general-purpose system.
+              </p>
+            </article>
+          </div>
 
-          <article class="plate project-plate">
-            <p class="plate-tag">Local AI</p>
-            <h3 class="plate-title">Sens</h3>
-            <p class="plate-body">
-              An educational assistant for learners of any age — mathematics, English,
-              physics, science and beyond, fluent in both English and Danish.
-            </p>
-          </article>
+          <div class="holo" data-drift="30" data-float="1">
+            <article class="holo-card">
+              <p class="card-tag">Local AI</p>
+              <h3 class="card-title">Sens</h3>
+              <p class="card-body">
+                An educational assistant for learners of any age — mathematics, English,
+                physics, science and beyond, fluent in both English and Danish.
+              </p>
+            </article>
+          </div>
 
-          <article class="plate project-plate">
-            <p class="plate-tag">Game</p>
-            <h3 class="plate-title">Orbiteer</h3>
-            <p class="plate-body">
-              A merge puzzle game with a twist — tiles combine in any connected shape, not
-              just straight lines, with ranks, prestige, and eleven worlds to unlock. Free
-              to play, on Android.
-            </p>
-          </article>
+          <div class="holo" data-drift="20" data-float="1">
+            <article class="holo-card">
+              <p class="card-tag">Game</p>
+              <h3 class="card-title">Orbiteer</h3>
+              <p class="card-body">
+                A merge puzzle game with a twist — tiles combine in any connected shape, not
+                just straight lines, with ranks, prestige, and eleven worlds to unlock. Free
+                to play, on Android.
+              </p>
+              <a class="card-link" href="gameinfo.html">Technical deep-dive &rarr;</a>
+            </article>
+          </div>
 
         </div>
       </div>
@@ -123,19 +121,22 @@
     <section id="contact" class="section">
       <div class="section-inner">
         <p class="eyebrow">03 — Contact</p>
-        <div class="plate plate-wide">
-          <h2 class="section-title">Get in touch.</h2>
-          <ul class="contact-list">
-            <li>
-              <span class="contact-label">Email</span>
-              <a href="mailto:immerse.pda@gmail.com" class="contact-value">immerse.pda@gmail.com</a>
-            </li>
-            <li>
-              <span class="contact-label">GitHub</span>
-              <a href="https://github.com/bigdigtrix1" class="contact-value">github.com/bigdigtrix1</a>
-            </li>
-          </ul>
-          <p class="plate-note"></p>
+        <h2 class="section-title">Get in touch.</h2>
+
+        <div class="holo holo-wide" data-drift="24" data-float="1">
+          <article class="holo-card">
+            <p class="card-tag">Channels</p>
+            <ul class="contact-list">
+              <li>
+                <span class="contact-label">Email</span>
+                <a href="mailto:immerse.pda@gmail.com" class="contact-value">immerse.pda@gmail.com</a>
+              </li>
+              <li>
+                <span class="contact-label">GitHub</span>
+                <a href="https://github.com/bigdigtrix1" class="contact-value" target="_blank" rel="noopener">github.com/bigdigtrix1</a>
+              </li>
+            </ul>
+          </article>
         </div>
       </div>
     </section>
@@ -143,16 +144,12 @@
   </main>
 
   <footer class="site-footer">
-    <span>© 2026 PDA</span>
-    <a href="policies.html" class="footer-dim footer-link">Policies</a>
-    <div class="theme-switcher" role="group" aria-label="Hologram theme">
-      <button type="button" class="theme-swatch theme-swatch--cyan" data-theme="cyan" title="Cyan" aria-label="Cyan theme"></button>
-      <button type="button" class="theme-swatch theme-swatch--amber" data-theme="amber" title="Amber" aria-label="Amber theme"></button>
-      <button type="button" class="theme-swatch theme-swatch--violet" data-theme="violet" title="Violet" aria-label="Violet theme"></button>
-    </div>
+    <span>&copy; 2026 PDA</span>
+    <a href="policies.html" class="footer-link">Policies</a>
     <span class="footer-dim">Built with intent.</span>
   </footer>
 
-  <script type="module" src="js/main.js"></script>
+  <script src="js/hologram.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
