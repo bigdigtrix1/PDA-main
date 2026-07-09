@@ -597,6 +597,37 @@ body {
   border-bottom: 1px solid rgba(125, 147, 168, 0.18);
 }
 
+.holo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+  padding: 12px 22px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cyan-bright);
+  text-decoration: none;
+  background: rgba(56, 223, 255, 0.07);
+  border: 1px solid var(--cyan-dim);
+  box-shadow: 0 0 18px rgba(56, 223, 255, 0.08), inset 0 0 18px rgba(56, 223, 255, 0.05);
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, text-shadow 0.25s ease;
+}
+
+.holo-btn:hover,
+.holo-btn:focus-visible {
+  background: rgba(56, 223, 255, 0.13);
+  border-color: var(--cyan);
+  box-shadow: 0 0 30px rgba(56, 223, 255, 0.18), inset 0 0 24px rgba(56, 223, 255, 0.08);
+  text-shadow: 0 0 12px var(--cyan-dim);
+}
+
+.holo-btn-icon {
+  font-size: 0.7rem;
+  color: var(--cyan);
+}
+
 .doc-section { margin-top: 38px; }
 
 .doc-h2 {
