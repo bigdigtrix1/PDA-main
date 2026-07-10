@@ -368,8 +368,10 @@ body {
 
 /* Alternating offsets so cards hover at staggered heights on wide screens */
 @media (min-width: 761px) {
+  .holo-grid { grid-template-columns: repeat(2, 1fr); }
   .holo-grid .holo:nth-child(2) { margin-top: 34px; }
   .holo-grid .holo:nth-child(3) { margin-top: 12px; }
+  .holo-grid .holo:nth-child(4) { margin-top: 42px; }
   .holo-wide { max-width: 780px; }
   #about .holo-wide { margin-left: 6%; }
   #contact .holo-wide { margin-left: 14%; }
