@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Technical Documentation — PDA</title>
+  <meta name="description" content="Technical documentation for PDA's projects — Orbiteer and The Watchtower.">
+
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-holo="sparse">
+
+  <div id="holo-bg" aria-hidden="true"></div>
+  <div class="holo-overlay" aria-hidden="true"></div>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-nav" id="siteNav">
+    <a href="index.html#hero" class="nav-mark">PDA</a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
+      <span></span><span></span><span></span>
+    </button>
+    <nav class="nav-links" id="navLinks">
+      <a href="index.html#about">About Me</a>
+      <a href="index.html#projects">Current Projects</a>
+      <a href="index.html#contact">Contact</a>
+      <a href="techdocs.html" class="active">Technical Documentation</a>
+      <a href="policies.html">Policies</a>
+    </nav>
+  </header>
+
+  <main id="main" class="doc-main">
+    <p class="eyebrow">Technical Documentation</p>
+
+    <nav class="doc-toc" aria-label="On this page">
+      <a href="#orbiteer">Orbiteer</a>
+      <a href="#watchtower">The Watchtower</a>
+    </nav>
+
+    <article class="doc-panel" id="orbiteer">
+      <p class="card-tag">Orbiteer</p>
+      <h1 class="doc-title">Orbiteer</h1>
+      <p class="doc-updated">Last updated: 7/7-2026</p>
+
+      <p class="doc-intro">
+        A planet-merging puzzle game for Android, built with Kotlin and Jetpack
+        Compose. Place tiles on a 6&times;5 grid, merge matching planets into rarer
+        ones, and chase deeper ranks, badges, and leaderboard position across
+        post-launch content built on top of the core loop. Questions about
+        anything below? Reach out at
+        <a href="mailto:immerse.pda@gmail.com">immerse.pda@gmail.com</a>.
+      </p>
+
+      <a class="holo-btn" href="https://play.google.com/store/apps/details?id=dk.pda.orbiteer&amp;hl=en" target="_blank" rel="noopener">
+        <span class="holo-btn-icon" aria-hidden="true">&#x25B6;</span>
+        Get Orbiteer on Google Play
+      </a>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Core Gameplay</h2>
+        <ul class="doc-list">
+          <li>6&times;5 grid with flood-fill merge detection — any connected group of 3+ matching tiles merges, in any shape, not just rows or lines</li>
+          <li>Tier-skip scaling — bigger groups jump further: a group of N tiles skips N &minus; 2 tiers, rewarding setting up large clusters over simple 3-tile matches</li>
+          <li>Combo multiplier — chaining merges quickly builds a live combo, up to &times;8, applied directly to score as you play</li>
+          <li>13-tier merge chain per theme, from a common starting tile up to a unique final "legendary" tile</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Progression Systems</h2>
+        <ul class="doc-list">
+          <li>Ranks — 50 ranks (10 titles &times; 5 sub-ranks, Apprentice through Immortal), with a threshold curve tuned from real playtest data so no single game can skip a large chunk of the ladder</li>
+          <li>Prestige — up to 500 prestige levels, unlocked at max rank; resets XP but keeps everything else, with a permanent score bonus per level</li>
+          <li>Badges — 40 badges across Gameplay, Score, and Playtime categories, each granting a permanent score bonus</li>
+          <li>Score multiplier — badge and prestige bonuses combine into a single multiplier (capped at &times;4.50 fully maxed), locked in at the start of each game and applied live to the running score, not just revealed at game-over. A badge earned mid-game affects the next game, not the one that earned it.</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Themes</h2>
+        <p class="doc-body">
+          11 unlockable visual themes (Deep Space, Ocean Depths, Cozy Farm, Neon
+          City, Solar Forge, Ancient Ruins, Cherry Blossom, Candy Land,
+          Prehistoric, Lunar Dream, The Void), each with:
+        </p>
+        <ul class="doc-list">
+          <li>Its own 13-tile emoji set and tile names</li>
+          <li>A distinct color palette applied throughout the UI</li>
+          <li>An animated background style, unlocked by rank index (evenly spread across the full rank ladder)</li>
+        </ul>
+        <p class="doc-body">
+          Themes unlock via XP milestones (aligned to specific rank completions)
+          or high-score thresholds.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Leaderboards &amp; Social</h2>
+        <ul class="doc-list">
+          <li>Firebase Authentication — every player gets a silent anonymous identity on first launch; optional Google Sign-In links to that identity to preserve progress across devices/reinstalls</li>
+          <li>Friend codes — 6-character codes for adding friends without any request/accept flow</li>
+          <li>Global (top 100) and Friends leaderboards, backed by Cloud Firestore</li>
+          <li>Server-enforced integrity — Firestore Security Rules validate score ceilings and document ownership; username uniqueness is enforced via atomic transactions against a dedicated registry collection</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Monetization</h2>
+        <ul class="doc-list">
+          <li>AdMob interstitial ads every 2nd game-over</li>
+          <li>Rewarded ads offering a bonus starting tile on the next game</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Tech Stack</h2>
+        <ul class="doc-kv-list">
+          <li><span class="doc-kv-label">Language</span><span class="doc-kv-value">Kotlin 2.2.0</span></li>
+          <li><span class="doc-kv-label">UI</span><span class="doc-kv-value">Jetpack Compose</span></li>
+          <li><span class="doc-kv-label">Local storage</span><span class="doc-kv-value">Room 2.7.1 (kapt)</span></li>
+          <li><span class="doc-kv-label">Backend</span><span class="doc-kv-value">Firebase (Auth, Firestore) — BoM 34.15.0</span></li>
+          <li><span class="doc-kv-label">Ads</span><span class="doc-kv-value">AdMob</span></li>
+          <li><span class="doc-kv-label">Build</span><span class="doc-kv-value">AGP 8.7.3, Gradle 8.9, Java 17</span></li>
+          <li><span class="doc-kv-label">CI/CD</span><span class="doc-kv-value">GitHub Actions</span></li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Project Structure</h2>
+        <pre class="doc-pre">app/src/main/java/dk/pda/orbiteer/
+├── game/                  # Core game logic (engine-only, no UI/player-progression knowledge)
+│   ├── GameEngine.kt      # Grid state, flood-fill merge resolution, combo tracking
+│   ├── Planet.kt          # Tile tier definitions, score/XP values, colors
+│   ├── RankSystem.kt      # Rank curve, prestige bonus calculation
+│   └── BadgeSystem.kt     # Badge definitions and unlock conditions
+├── ui/                    # Jetpack Compose screens and view models
+│   ├── GameScreen.kt      # Main game UI — grid, popups, results, settings
+│   ├── GameViewModel.kt   # App state, player stats, game lifecycle
+│   ├── ThemeManager.kt    # Theme/background definitions and unlock logic
+│   ├── AppIcons.kt        # Custom vector icon renderer (ranks &amp; badges)
+│   ├── OnboardingScreen.kt
+│   └── BackgroundRenderer.kt / SoundManager.kt
+├── data/                  # Room database (PlayerStats, ScoreEntry)
+├── auth/                  # Firebase Authentication wrapper
+├── leaderboard/           # Firestore leaderboard read/write, friend codes
+└── ads/                   # AdMob integration</pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Building</h2>
+        <p class="doc-body">
+          Requirements: JDK 17, Android SDK, a Firebase project with
+          Authentication (Anonymous + Google) and Firestore enabled.
+        </p>
+        <ul class="doc-list">
+          <li>Add <code>app/google-services.json</code> from your Firebase project</li>
+          <li>Register your debug and release SHA-1/SHA-256 fingerprints in Firebase Console (required for Google Sign-In)</li>
+          <li>Set the Web Client ID in <code>AuthManager.kt</code></li>
+          <li>Publish the Firestore security rules (see <code>firestore.rules</code>)</li>
+          <li>For release builds via CI, set <code>KEYSTORE_BASE64</code>, <code>KEYSTORE_PASSWORD</code>, <code>KEY_ALIAS</code>, and <code>KEY_PASSWORD</code> as GitHub Actions secrets</li>
+        </ul>
+        <p class="doc-body">
+          Debug builds run directly from Android Studio; release builds
+          (<code>assembleRelease</code> / <code>bundleRelease</code>) run via the
+          GitHub Actions workflow on push to <code>master</code>.
+        </p>
+      </section>
+    </article>
+
+    <article class="doc-panel" id="watchtower">
+      <p class="card-tag">The Watchtower</p>
+      <h1 class="doc-title">The Watchtower</h1>
+      <p class="doc-updated">Last updated: 7/10-2026</p>
+
+      <p class="doc-intro">
+        A personal uptime monitor for Android, built natively in Kotlin with
+        Jetpack Compose in the same cyan-and-steel holographic theme as this
+        site. Add targets — websites, LAN devices, TCP services, JSON APIs —
+        and The Watchtower checks them in the background, charts their latency
+        and uptime, and alerts you when something goes down or comes back up.
+        Questions about anything below? Reach out at
+        <a href="mailto:immerse.pda@gmail.com">immerse.pda@gmail.com</a>.
+      </p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Tech Stack</h2>
+        <p class="doc-body">
+          Native Android, 100% Kotlin. Plain <code>HttpURLConnection</code> and
+          <code>Socket</code> handle the network checks — no third-party
+          libraries at all, which keeps the APK at roughly 10&nbsp;MB.
+        </p>
+        <ul class="doc-kv-list">
+          <li><span class="doc-kv-label">Language</span><span class="doc-kv-value">Kotlin 2.0 (100% Kotlin)</span></li>
+          <li><span class="doc-kv-label">UI</span><span class="doc-kv-value">Jetpack Compose (Material 3)</span></li>
+          <li><span class="doc-kv-label">Storage</span><span class="doc-kv-value">Room (KSP codegen)</span></li>
+          <li><span class="doc-kv-label">Scheduling</span><span class="doc-kv-value">WorkManager</span></li>
+          <li><span class="doc-kv-label">Network</span><span class="doc-kv-value">HttpURLConnection / Socket — zero dependencies</span></li>
+          <li><span class="doc-kv-label">SDK</span><span class="doc-kv-value">Min 26 (Android 8) · Target 35</span></li>
+          <li><span class="doc-kv-label">Footprint</span><span class="doc-kv-value">~10 MB APK</span></li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Architecture</h2>
+        <p class="doc-body">
+          Single-activity app, four Compose screens behind Navigation-Compose,
+          one shared <code>AndroidViewModel</code>, and a <code>Repository</code>
+          that owns all business logic. Layers:
+        </p>
+        <pre class="doc-pre">ui/          # screens, theme, reusable holo components, charts
+  └── MainViewModel — StateFlows the screens collect
+data/        # Room entities + DAOs, Repository, SharedPreferences wrapper
+net/         # the four checkers + network-transport detection
+work/        # MonitorWorker (periodic) + Notifier (channels &amp; alert posting)</pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Data Model</h2>
+        <p class="doc-body">Two Room tables:</p>
+        <ul class="doc-list">
+          <li><code>targets</code> — name, type (<code>HTTP | PING | TCP | JSON_API</code>, stored as strings via Room's built-in enum converter), address, port, <code>isLocal</code>, <code>statPaths</code> (the JSON extraction spec), <code>notifyEnabled</code> (per-target mute), and <code>lastAlertAt</code> (alert-state bookkeeping, see below)</li>
+          <li><code>results</code> — one row per check: timestamp, <code>success</code>, <code>skipped</code>, <code>latencyMs</code>, <code>statusCode</code>, <code>message</code>. Indexed on <code>targetId</code> and <code>timestamp</code>, pruned to a 30-day window after every batch run</li>
+        </ul>
+        <p class="doc-body">
+          DAOs expose Kotlin <code>Flow</code>s, so the UI is fully reactive:
+          inserting a result from anywhere (manual refresh, background worker)
+          automatically recomposes the dashboard, sparklines, and detail charts.
+          Schema changes ship as proper Room migrations (v1&rarr;v2 added the two
+          notification columns with <code>ALTER TABLE</code>).
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The Check Engine</h2>
+        <p class="doc-body">
+          <code>Checkers.run(target)</code> dispatches on type, all on
+          <code>Dispatchers.IO</code>:
+        </p>
+        <ul class="doc-list">
+          <li>HTTP / JSON API — <code>HttpURLConnection</code>, GET, 8&nbsp;s connect/read timeouts, follows redirects. Success = status 200–399. Latency is measured with <code>SystemClock.elapsedRealtime()</code> (monotonic, immune to clock changes). URLs without a scheme get <code>https://</code> prepended; cleartext HTTP is explicitly allowed in the manifest because most LAN devices have no TLS.</li>
+          <li>JSON API extraction — the response body is parsed with <code>org.json</code>. The user's spec is one line per stat: <code>Label = dot.path</code>, where numeric segments index arrays (<code>disks.0.free</code>). The resolver walks the JSON tree segment by segment; missing paths render as "—" without failing the check. Extracted values are stored in the result's <code>message</code> field, so the detail screen can show the latest stats with zero extra schema.</li>
+          <li>Ping — spawns the system <code>ping -c 1 -W 3</code> binary and parses <code>time=</code> from stdout, because Java's <code>InetAddress.isReachable()</code> needs raw-socket privileges for real ICMP on Android and silently falls back to TCP port 7. The binary is present on effectively every Android build; if exec fails, the code falls back to <code>isReachable()</code> anyway. A 6-second <code>waitFor</code> guard kills hung processes.</li>
+          <li>TCP — <code>Socket().connect(InetSocketAddress, 5000)</code>, measuring time-to-connect. Success = the handshake completed; the socket is closed immediately.</li>
+        </ul>
+        <p class="doc-body">
+          Every checker returns a uniform
+          <code>CheckOutcome(success, latencyMs, statusCode, message)</code> —
+          errors are caught and truncated into <code>message</code>, so a failure
+          is data, never an exception that escapes.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Local-Device Gating</h2>
+        <p class="doc-body">
+          Before checking a target marked local, the repository asks
+          <code>ConnectivityManager</code> whether the active network has the
+          <code>TRANSPORT_WIFI</code> or <code>TRANSPORT_ETHERNET</code>
+          capability. If not, no network call is made at all — a result row with
+          <code>skipped = true</code> is written instead. Skipped rows are
+          excluded from uptime math, sparklines, and the alert state machine,
+          which is what prevents false "down" alerts on mobile data. The
+          dashboard polls this every 5 seconds to show HOME NETWORK vs REMOTE in
+          the header.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Background Monitoring</h2>
+        <p class="doc-body">
+          A <code>CoroutineWorker</code> is enqueued as unique periodic work
+          (<code>ExistingPeriodicWorkPolicy.UPDATE</code>, so interval changes
+          replace the schedule in place) with a
+          <code>NetworkType.CONNECTED</code> constraint. Interval is
+          user-selectable 15/30/60 min — 15 is WorkManager's hard floor. Each run
+          checks every enabled target sequentially, then prunes old results.
+          Failures return <code>Result.retry()</code> so WorkManager backs off
+          and retries rather than dropping a cycle.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The Alert State Machine</h2>
+        <p class="doc-body">
+          This is the interesting part. Alert decisions are made per check,
+          statelessly derived from history rather than from an in-memory flag,
+          so app restarts, process death, and mixed manual/background checks
+          can't lose track:
+        </p>
+        <ol class="doc-steps">
+          <li>Before running a check, fetch the last <code>threshold + 1</code> non-skipped results. Count leading consecutive failures &rarr; <code>wasDown = failures &ge; threshold</code>.</li>
+          <li>Run the check, insert the result.</li>
+          <li>Failure: if <code>failures + 1 &ge; threshold</code> and it wasn't down before &rarr; post the down alert and stamp <code>lastAlertAt</code>. If it was already down and hourly reminders are on and &ge; 1&nbsp;h since <code>lastAlertAt</code> &rarr; post a "still down" reminder and re-stamp.</li>
+          <li>Success: if it was down (i.e., had crossed the threshold) &rarr; post the recovery alert; reset <code>lastAlertAt</code> to 0.</li>
+        </ol>
+        <p class="doc-body">
+          The threshold ("alert after 1/2/3 consecutive failures") therefore
+          debounces flapping: with threshold 2, a single blip produces neither a
+          down nor a recovery notification, because the target never entered the
+          alerted-down state.
+        </p>
+        <p class="doc-body">
+          Notifications go to one of three channels —
+          <code>watchtower_down</code> (importance HIGH),
+          <code>watchtower_up</code> (DEFAULT), <code>watchtower_quiet</code>
+          (LOW) — and quiet hours simply reroute whatever would have been posted
+          onto the LOW channel, so night-time alerts still land in the shade but
+          never make sound or vibrate. Because channels are the routing unit,
+          the user can further override sound/importance per alert kind in
+          Android's own settings. All alerts for a target reuse
+          <code>target.id</code> as the notification id, so a recovery replaces
+          the outstanding down alert instead of stacking.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">UI and Theming</h2>
+        <p class="doc-body">
+          The web theme is reimplemented natively rather than webview'd:
+        </p>
+        <ul class="doc-list">
+          <li>Backdrop — a <code>Box</code> with a vertical gradient, plus two <code>Canvas</code> layers: a static one drawing the radial cyan glow and 4&nbsp;dp-pitch scanlines (drawn once, never recomposes), and an animated one drawing the sweep band, driven by a <code>rememberInfiniteTransition</code> float over 11&nbsp;s. Splitting them keeps the per-frame cost to a single gradient rect.</li>
+          <li>Holo cards — <code>Column</code> with translucent steel background and 1&nbsp;dp border; the signature cyan corner brackets are drawn in <code>drawWithContent</code> as four stroke lines pinned to the top-left/bottom-right corners, so they scale with any card size.</li>
+          <li>Typography — Chakra Petch and IBM Plex Mono ship as bundled font resources (no runtime font fetching); the title glow is a <code>Shadow</code> with 18&nbsp;px blur in the text style.</li>
+          <li>Charts — hand-rolled on <code>Canvas</code>: the sparkline is a normalized polyline of latency; the detail chart adds grid lines, a gradient area fill under the latency path, and red dots pinned to the baseline for failed checks. Uptime %, average latency, and the event log (up/down transitions) are computed in <code>remember</code> blocks from the same result list the chart uses.</li>
+          <li>Edge-to-edge — target SDK 35 forces it, so the gradient backdrop runs under the system bars and content is inset with <code>WindowInsets.safeDrawing</code> padding.</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Reactive Flow, End to End</h2>
+        <p class="doc-body">
+          One example tying it together: the background worker checks a target
+          &rarr; repository inserts a <code>CheckResult</code> row &rarr; Room
+          invalidates the <code>observeSince</code> Flow &rarr; the ViewModel's
+          <code>StateFlow</code> emits &rarr; the dashboard recomposes the card's
+          status dot, latency text, uptime %, and sparkline — while the same
+          insert may have posted a notification through the state machine. There
+          is exactly one write path and one read path; nothing polls and no
+          screen holds its own copy of state.
+        </p>
+      </section>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <span>&copy; 2026 PDA</span>
+    <a href="policies.html" class="footer-link">Policies</a>
+    <span class="footer-dim">Built with intent.</span>
+  </footer>
+
+  <script src="js/hologram.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

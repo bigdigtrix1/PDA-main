@@ -211,7 +211,7 @@ body {
 .nav-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
 .nav-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
-@media (max-width: 760px) {
+@media (max-width: 899px) {
   .nav-toggle { display: flex; }
 
   .nav-links {
@@ -538,6 +538,37 @@ body {
   padding: calc(var(--nav-h) + clamp(40px, 8vh, 80px)) clamp(18px, 5vw, 40px) clamp(60px, 10vh, 100px);
 }
 
+.doc-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.doc-toc a {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-decoration: none;
+  padding: 7px 14px;
+  border: 1px solid var(--card-border);
+  background: rgba(22, 32, 44, 0.45);
+  transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+
+.doc-toc a:hover,
+.doc-toc a:focus-visible {
+  color: var(--cyan-bright);
+  border-color: var(--cyan-dim);
+  background: rgba(56, 223, 255, 0.07);
+}
+
+.doc-panel + .doc-panel {
+  margin-top: clamp(48px, 8vh, 84px);
+}
+
 .doc-panel {
   position: relative;
   margin-top: 18px;
@@ -676,6 +707,30 @@ body {
   top: 6px;
   color: var(--cyan);
   font-size: 0.85rem;
+}
+
+.doc-steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 6px 0 12px;
+}
+
+.doc-steps li {
+  position: relative;
+  counter-increment: step;
+  padding: 6px 0 6px 36px;
+  color: var(--text-dim);
+  font-size: 0.97rem;
+}
+
+.doc-steps li::before {
+  content: counter(step, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--cyan);
 }
 
 .doc-kv-list { list-style: none; }

@@ -5,7 +5,7 @@ Static portfolio site for PDA with a holographic hexagon backdrop in a cyan & st
 ## Pages
 
 - `index.html` — About Me, Current Projects, Contact (floating holo info cards)
-- `gameinfo.html` — Orbiteer technical deep-dive
+- `techdocs.html` — technical documentation (Orbiteer and The Watchtower deep-dives)
 - `policies.html` — Orbiteer privacy policy
 
 ## Deploying to GitHub Pages
