@@ -358,9 +358,10 @@ body {
    -------------------------------------------------------------------------- */
 
 .holo-grid {
+  --grid-gap: clamp(22px, 3.5vw, 38px);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: clamp(22px, 3.5vw, 38px);
+  gap: var(--grid-gap);
   align-items: stretch;
 }
 
@@ -372,6 +373,13 @@ body {
   .holo-grid .holo:nth-child(2) { margin-top: 34px; }
   .holo-grid .holo:nth-child(3) { margin-top: 12px; }
   .holo-grid .holo:nth-child(4) { margin-top: 42px; }
+  /* lone card on the last row: center it at single-column width */
+  .holo-grid .holo:nth-child(5) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: calc(50% - var(--grid-gap) / 2);
+    margin-top: 10px;
+  }
   .holo-wide { max-width: 780px; }
   #about .holo-wide { margin-left: 6%; }
   #contact .holo-wide { margin-left: 14%; }
