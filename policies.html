@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Policies — PDA</title>
-  <meta name="description" content="Privacy policy for Orbiteer and PDA's other projects.">
+  <meta name="description" content="Privacy policies for PDA's apps — Orbiteer and Watchtower.">
 
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 
@@ -38,7 +38,12 @@
   <main id="main" class="doc-main">
     <p class="eyebrow">Policies</p>
 
-    <article class="doc-panel">
+    <nav class="doc-toc" aria-label="On this page">
+      <a href="#orbiteer">Orbiteer</a>
+      <a href="#watchtower">Watchtower</a>
+    </nav>
+
+    <article class="doc-panel" id="orbiteer">
       <p class="card-tag">Orbiteer</p>
       <h1 class="doc-title">Privacy Policy for Orbiteer</h1>
       <p class="doc-updated">Last updated: 7/3-2026</p>
@@ -198,6 +203,237 @@
         <p class="doc-body">
           If you have questions about this Privacy Policy or your data, contact us
           at: <a href="mailto:immerse.pda@gmail.com">immerse.pda@gmail.com</a>
+        </p>
+      </section>
+    </article>
+
+    <article class="doc-panel" id="watchtower">
+      <p class="card-tag">Watchtower</p>
+      <h1 class="doc-title">Privacy Policy for Watchtower</h1>
+      <p class="doc-updated">Last updated: 31 July 2026</p>
+
+      <p class="doc-intro">
+        Watchtower ("the app") is an Android application developed by PDA
+        ("we", "us"). The app lets you monitor whether websites and devices on
+        your own network are reachable, and shows statistics about them. This
+        policy explains what data the app handles, what leaves your device, and
+        what your rights are. We have written it to be specific rather than
+        generic — most of what Watchtower does happens entirely on your phone.
+        Contact: <a href="mailto:immerse.pda@gmail.com">immerse.pda@gmail.com</a>
+      </p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The Short Version</h2>
+        <ul class="doc-list">
+          <li>Everything you monitor — the targets you add and their check history — is stored only on your device. We never receive it, and it is never uploaded anywhere.</li>
+          <li>We do not require an account, and we do not ask for your name, email, or location.</li>
+          <li>The app shows advertising supplied by Google AdMob, which does collect data. That is the main way data about you leaves your device.</li>
+          <li>Uninstalling the app deletes all monitoring data with it.</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Data Stored on Your Device Only</h2>
+        <p class="doc-body">
+          The following is written to local storage on your phone and is never
+          transmitted to us or anyone else:
+        </p>
+        <ul class="doc-list">
+          <li>Monitoring targets you create: the name, address (URL, hostname or IP), port, check type, and per-target settings such as alert preferences and any Wake-on-LAN MAC address you enter.</li>
+          <li>Check history: the result of each check — success or failure, response time, packet loss, HTTP status, certificate expiry, and any values retrieved from a device's own API. This history is automatically deleted after 30 days.</li>
+          <li>Network identity of your local devices: to avoid false alarms when you are away from home, the app remembers which network each local device was last reached on (the subnet, gateway, and an internal network identifier). This never leaves the device.</li>
+          <li>Results of a network scan, if you use that feature: the addresses, open ports and names of devices that respond on the network you are connected to.</li>
+          <li>App settings: notification preferences, check interval, quiet hours, and your chosen colour theme.</li>
+        </ul>
+        <p class="doc-body">
+          You can delete all of it at any time by deleting individual targets,
+          clearing the app's storage in Android settings, or uninstalling the
+          app.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What the App Connects To</h2>
+
+        <h3 class="doc-h3">The services you ask it to check</h3>
+        <p class="doc-body">
+          When a check runs, your device contacts the address you entered — a
+          website, a device on your local network, a DNS server, and so on.
+          Those connections come from your device directly. Any service you
+          point the app at will see your device's IP address in the normal
+          course of being contacted, exactly as if you had opened it in a
+          browser. We are not involved in and do not observe those connections.
+        </p>
+
+        <h3 class="doc-h3">Your local network</h3>
+        <p class="doc-body">
+          When you use the network scan, or check a device marked as local, the
+          app probes addresses on the network you are currently connected to in
+          order to see which respond. This is done from your device, and the
+          results stay on your device.
+        </p>
+
+        <h3 class="doc-h3">Google Firebase (Cloud Firestore)</h3>
+        <p class="doc-body">
+          On startup the app reads a single configuration value from our
+          Firebase project to determine whether advertising should be shown.
+          This is a read-only request that sends no personal information about
+          you, but as with any internet request, Google receives your device's
+          IP address and standard technical information in order to serve the
+          response. Firebase is operated by Google — see Google's privacy
+          policy, linked below.
+        </p>
+
+        <h3 class="doc-h3">Google AdMob</h3>
+        <p class="doc-body">See the next section.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Advertising</h2>
+        <p class="doc-body">
+          Watchtower displays a banner advertisement supplied by Google AdMob.
+          To do this, Google and its advertising partners may collect and
+          process:
+        </p>
+        <ul class="doc-list">
+          <li>Your device's advertising ID</li>
+          <li>Your IP address and approximate location derived from it</li>
+          <li>Device and app information such as device model, operating system version, and the app you are using</li>
+          <li>Interaction data, such as whether an ad was shown, viewed or clicked</li>
+        </ul>
+        <p class="doc-body">
+          This data is used to serve and measure advertising, to limit how often
+          you see the same ad, and to detect invalid or fraudulent ad traffic.
+          Google acts as an independent controller of this data. Its handling is
+          governed by Google's own policies:
+        </p>
+        <ul class="doc-list">
+          <li>Google Privacy Policy — <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a></li>
+          <li>How Google uses information from partner sites and apps — <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener">policies.google.com/technologies/partner-sites</a></li>
+        </ul>
+
+        <h3 class="doc-h3">Your choice about advertising</h3>
+        <p class="doc-body">
+          If you are in the European Economic Area, the United Kingdom,
+          Switzerland, or a US state with applicable privacy laws, the app shows
+          you a consent form the first time it runs, provided by Google's User
+          Messaging Platform. You choose there whether your data may be used for
+          personalised advertising.
+        </p>
+        <p class="doc-body">
+          You can change your choice at any time in the app: open
+          <strong>Options</strong> and select <strong>Ad privacy options</strong>.
+        </p>
+        <p class="doc-body">
+          If you decline personalised advertising, you will still see ads, but
+          they will not be personalised using your data.
+        </p>
+        <p class="doc-body">
+          You can also reset or delete your advertising ID at any time in your
+          device's Android settings, under <strong>Privacy &rarr; Ads</strong>.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Permissions the App Requests</h2>
+        <ul class="doc-kv-list">
+          <li><span class="doc-kv-label">Internet</span><span class="doc-kv-value">To perform the checks you configure and to load advertising</span></li>
+          <li><span class="doc-kv-label">View network connections</span><span class="doc-kv-value">To detect whether you are on Wi-Fi, so local-device checks are only attempted on the right network</span></li>
+          <li><span class="doc-kv-label">Notifications</span><span class="doc-kv-value">To alert you when a monitored target goes down or recovers. Optional — the app works without it</span></li>
+          <li><span class="doc-kv-label">Advertising ID</span><span class="doc-kv-value">Added by the Google AdMob SDK, for the advertising purposes described above</span></li>
+        </ul>
+        <p class="doc-body">
+          Watchtower does not request location permission, does not access your
+          contacts, camera, microphone, files, or any other personal data on
+          your device.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Analytics</h2>
+        <p class="doc-body">
+          The app contains no analytics or crash-reporting SDK. We do not track
+          how you use the app, and we receive no usage statistics or crash
+          reports from it.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Legal Basis for Processing (EEA/UK)</h2>
+        <p class="doc-body">Where the GDPR applies:</p>
+        <ul class="doc-list">
+          <li>Operating the app's monitoring features relies on our legitimate interest in providing the functionality you requested. In practice this data does not leave your device.</li>
+          <li>Personalised advertising relies on your consent, collected through the consent form described above, which you may withdraw at any time.</li>
+          <li>Non-personalised advertising and fraud prevention rely on legitimate interests in funding and protecting the service.</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Data Retention</h2>
+        <ul class="doc-list">
+          <li>Check history is deleted automatically after 30 days.</li>
+          <li>All other locally stored data remains until you delete the relevant item, clear the app's storage, or uninstall the app.</li>
+          <li>We hold no personal data about you on our own servers, so there is nothing for us to retain or delete on your behalf.</li>
+          <li>Data collected by Google through AdMob is retained according to Google's own policies.</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Your Rights</h2>
+        <p class="doc-body">
+          Under the GDPR and similar laws you have the right to access, correct,
+          delete, restrict or object to processing of your personal data, and to
+          data portability.
+        </p>
+        <p class="doc-body">
+          Because Watchtower stores your monitoring data solely on your own
+          device and we hold no personal data about you, you can exercise most
+          of these rights directly: view your data in the app, delete it in the
+          app, or uninstall to remove it entirely.
+        </p>
+        <p class="doc-body">
+          For data collected by Google through AdMob, please contact Google or
+          use the ad settings linked above. You also have the right to lodge a
+          complaint with your local data protection authority — in Denmark,
+          Datatilsynet (<a href="https://www.datatilsynet.dk" target="_blank" rel="noopener">datatilsynet.dk</a>).
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Children</h2>
+        <p class="doc-body">
+          Watchtower is a network monitoring utility intended for general
+          audiences. It is not directed at children, and we do not knowingly
+          collect personal data from children.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Security</h2>
+        <p class="doc-body">
+          Monitoring data is stored in the app's private storage area, which
+          other apps on your device cannot read. Because the app is designed to
+          work with equipment on your own network, some checks may use
+          unencrypted connections (for example plain HTTP to a device that does
+          not support HTTPS) — those connections stay within your own network.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Changes to This Policy</h2>
+        <p class="doc-body">
+          If this policy changes materially, we will update the "Last updated"
+          date above and publish the revised version at the same address.
+          Continued use of the app after a change indicates acceptance of the
+          updated policy.
+        </p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Contact</h2>
+        <p class="doc-body">
+          Questions about this policy or your data:
+          <a href="mailto:immerse.pda@gmail.com">immerse.pda@gmail.com</a>
         </p>
       </section>
     </article>
